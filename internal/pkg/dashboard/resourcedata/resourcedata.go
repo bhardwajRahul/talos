@@ -16,15 +16,17 @@ import (
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/siderolabs/gen/channel"
 	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc/codes"
 
 	"github.com/siderolabs/talos/internal/pkg/dashboard/util"
-	"github.com/siderolabs/talos/pkg/machinery/constants"
+	"github.com/siderolabs/talos/pkg/machinery/client"
 	"github.com/siderolabs/talos/pkg/machinery/resources/cluster"
 	"github.com/siderolabs/talos/pkg/machinery/resources/config"
 	"github.com/siderolabs/talos/pkg/machinery/resources/hardware"
 	"github.com/siderolabs/talos/pkg/machinery/resources/k8s"
 	"github.com/siderolabs/talos/pkg/machinery/resources/network"
 	"github.com/siderolabs/talos/pkg/machinery/resources/runtime"
+	"github.com/siderolabs/talos/pkg/machinery/resources/siderolink"
 	"github.com/siderolabs/talos/pkg/machinery/resources/v1alpha1"
 )
 
@@ -112,14 +114,6 @@ func (source *Source) runResourceWatch(ctx context.Context, node string) error {
 		return err
 	}
 
-	if err := source.COSI.Watch(ctx, runtime.NewMountStatus(v1alpha1.NamespaceName, constants.StatePartitionLabel).Metadata(), eventCh); err != nil {
-		return err
-	}
-
-	if err := source.COSI.Watch(ctx, runtime.NewMountStatus(v1alpha1.NamespaceName, constants.EphemeralPartitionLabel).Metadata(), eventCh); err != nil {
-		return err
-	}
-
 	if err := source.COSI.Watch(ctx, config.NewMachineType().Metadata(), eventCh); err != nil {
 		return err
 	}
@@ -174,6 +168,17 @@ func (source *Source) runResourceWatch(ctx context.Context, node string) error {
 
 	if err := source.COSI.WatchKind(ctx, network.NewNodeAddress(network.NamespaceName, "").Metadata(), eventCh, state.WithBootstrapContents(true)); err != nil {
 		return err
+	}
+
+	if err := source.COSI.WatchKind(ctx, siderolink.NewStatus().Metadata(), eventCh, state.WithBootstrapContents(true)); err != nil {
+		return err
+	}
+
+	if err := source.COSI.WatchKind(ctx, runtime.NewDiagnostic(runtime.NamespaceName, "").Metadata(), eventCh, state.WithBootstrapContents(true)); err != nil {
+		if client.StatusCode(err) != codes.PermissionDenied {
+			// ignore permission denied, means resource is not supported yet
+			return err
+		}
 	}
 
 	for {

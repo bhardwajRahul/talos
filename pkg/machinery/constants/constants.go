@@ -14,7 +14,7 @@ import (
 
 const (
 	// DefaultKernelVersion is the default Linux kernel version.
-	DefaultKernelVersion = "6.6.30-talos"
+	DefaultKernelVersion = "6.6.33-talos"
 
 	// KernelModulesPath is the default path to the kernel modules without the kernel version.
 	KernelModulesPath = "/lib/modules"
@@ -398,7 +398,7 @@ const (
 
 	// DefaultEtcdVersion is the default target version of etcd.
 	// renovate: datasource=github-releases depName=etcd-io/etcd
-	DefaultEtcdVersion = "v3.5.13"
+	DefaultEtcdVersion = "v3.5.14"
 
 	// EtcdRootTalosKey is the root etcd key for Talos-specific storage.
 	EtcdRootTalosKey = "talos:v1"
@@ -477,7 +477,7 @@ const (
 	TrustdUserID = 51
 
 	// DefaultContainerdVersion is the default container runtime version.
-	DefaultContainerdVersion = "1.7.16"
+	DefaultContainerdVersion = "2.0.0-rc.2"
 
 	// SystemContainerdNamespace is the Containerd namespace for Talos services.
 	SystemContainerdNamespace = "system"
@@ -666,6 +666,12 @@ const (
 	// CgroupSystemRuntime is the cgroup name for containerd runtime processes.
 	CgroupSystemRuntime = CgroupSystem + "/runtime"
 
+	// CgroupApid is the cgroup name for apid runtime processes.
+	CgroupApid = CgroupSystem + "/apid"
+
+	// CgroupTrustd is the cgroup name for trustd runtime processes.
+	CgroupTrustd = CgroupSystem + "/trustd"
+
 	// CgroupUdevd is the cgroup name for udevd runtime processes.
 	CgroupUdevd = CgroupSystem + "/udevd"
 
@@ -680,6 +686,9 @@ const (
 
 	// CgroupPodRuntimeReservedMemory is the hard memory protection for the cri runtime processes.
 	CgroupPodRuntimeReservedMemory = 128 * 1024 * 1024
+
+	// CgroupEtcd is the cgroup name for etcd process.
+	CgroupEtcd = "/podruntime/etcd"
 
 	// CgroupKubelet is the cgroup name for kubelet process.
 	CgroupKubelet = "/podruntime/kubelet"
@@ -884,7 +893,7 @@ const (
 	DBusClientSocketPath = "/run/dbus/system_bus_socket"
 
 	// GoVersion is the version of Go compiler this release was built with.
-	GoVersion = "go1.22.3"
+	GoVersion = "go1.22.4"
 
 	// KubernetesTalosAPIServiceName is the name of the Kubernetes service to access Talos API.
 	KubernetesTalosAPIServiceName = "talos"
@@ -947,7 +956,7 @@ const (
 	DashboardTTY = 2
 
 	// FlannelVersion is the version of flannel to use.
-	FlannelVersion = "v0.25.1"
+	FlannelVersion = "v0.25.3"
 
 	// PlatformMetal is the name of the metal platform.
 	PlatformMetal = "metal"

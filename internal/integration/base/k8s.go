@@ -14,6 +14,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/siderolabs/gen/xslices"
@@ -67,8 +68,6 @@ func (k8sSuite *K8sSuite) SetupSuite() {
 	})
 	k8sSuite.Require().NoError(err)
 
-	// patch timeout
-	config.Timeout = time.Minute
 	if k8sSuite.K8sEndpoint != "" {
 		config.Host = k8sSuite.K8sEndpoint
 	}
@@ -228,6 +227,27 @@ func (k8sSuite *K8sSuite) WaitForPodToBeRunning(ctx context.Context, timeout tim
 	}
 }
 
+// LogPodLogs logs the logs of the pod with the given namespace and name.
+func (k8sSuite *K8sSuite) LogPodLogs(ctx context.Context, namespace, podName string) {
+	ctx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+
+	req := k8sSuite.Clientset.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{})
+
+	readCloser, err := req.Stream(ctx)
+	if err != nil {
+		k8sSuite.T().Logf("failed to get pod logs: %s", err)
+	}
+
+	defer readCloser.Close() //nolint:errcheck
+
+	scanner := bufio.NewScanner(readCloser)
+
+	for scanner.Scan() {
+		k8sSuite.T().Logf("%s/%s: %s", namespace, podName, scanner.Text())
+	}
+}
+
 // WaitForPodToBeDeleted waits for the pod with the given namespace and name to be deleted.
 func (k8sSuite *K8sSuite) WaitForPodToBeDeleted(ctx context.Context, timeout time.Duration, namespace, podName string) error {
 	ctx, cancel := context.WithTimeout(ctx, timeout)
@@ -285,17 +305,26 @@ func (k8sSuite *K8sSuite) ExecuteCommandInPod(ctx context.Context, namespace, po
 		return "", "", err
 	}
 
-	var stdout, stderr bytes.Buffer
+	var stdout, stderr strings.Builder
 
 	err = exec.StreamWithContext(ctx, remotecommand.StreamOptions{
 		Stdout: &stdout,
 		Stderr: &stderr,
 	})
 	if err != nil {
-		return "", "", err
+		k8sSuite.T().Logf(
+			"error executing command in pod %s/%s: %v\n\ncommand %q stdout:\n%s\n\ncommand %q stderr:\n%s",
+			namespace,
+			podName,
+			err,
+			command,
+			stdout.String(),
+			command,
+			stderr.String(),
+		)
 	}
 
-	return stdout.String(), stderr.String(), nil
+	return stdout.String(), stderr.String(), err
 }
 
 // GetPodsWithLabel returns the pods with the given label in the specified namespace.

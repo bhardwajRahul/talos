@@ -5,10 +5,12 @@
 package vm
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"syscall"
+	"time"
+
+	"github.com/siderolabs/go-retry/retry"
 )
 
 // StopProcessByPidfile stops a process by reading its PID from a file.
@@ -43,13 +45,16 @@ func StopProcessByPidfile(pidPath string) error {
 		return fmt.Errorf("error sending SIGTERM to %d (path %q): %w", pid, pidPath, err)
 	}
 
-	if _, err = proc.Wait(); err != nil {
-		if errors.Is(err, syscall.ECHILD) {
-			return nil
+	// wait for the process to exit, this is using (unreliable and slow) polling
+	return retry.Constant(30*time.Second, retry.WithUnits(100*time.Millisecond)).Retry(func() error {
+		// wait for the process if it's our child, we should clean up zombies, but if it's not our child, it would return ECHILD
+		proc.Wait() //nolint:errcheck
+
+		signalErr := proc.Signal(syscall.Signal(0))
+		if signalErr == nil {
+			return retry.ExpectedErrorf("process %d still running", pid)
 		}
 
-		return fmt.Errorf("error waiting for %d to exit (path %q): %w", pid, pidPath, err)
-	}
-
-	return nil
+		return nil
+	})
 }

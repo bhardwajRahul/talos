@@ -32,6 +32,10 @@ func (suite *VolumesSuite) SuiteName() string {
 
 // SetupTest ...
 func (suite *VolumesSuite) SetupTest() {
+	if !suite.Capabilities().SupportsVolumes {
+		suite.T().Skip("cluster doesn't support volumes")
+	}
+
 	suite.ctx, suite.ctxCancel = context.WithTimeout(context.Background(), time.Minute)
 }
 
@@ -44,39 +48,42 @@ func (suite *VolumesSuite) TearDownTest() {
 
 // TestDiscoveredVolumes verifies that standard Talos partitions are discovered.
 func (suite *VolumesSuite) TestDiscoveredVolumes() {
-	suite.T().Skip("skipping test, as it's flaky (going to address it later)")
-
-	if !suite.Capabilities().SupportsVolumes {
-		suite.T().Skip("cluster doesn't support volumes")
+	for _, node := range suite.DiscoverNodeInternalIPs(suite.ctx) {
+		suite.Run(node, func() {
+			suite.testDiscoveredVolumes(node)
+		})
 	}
+}
 
-	node := suite.RandomDiscoveredNodeInternalIP()
+func (suite *VolumesSuite) testDiscoveredVolumes(node string) {
 	ctx := client.WithNode(suite.ctx, node)
 
 	volumes, err := safe.StateListAll[*block.DiscoveredVolume](ctx, suite.Client.COSI)
 	suite.Require().NoError(err)
 
 	expectedVolumes := map[string]struct {
-		Name string
+		Names []string
 	}{
-		"META": {},
+		"META": {
+			Names: []string{"talosmeta", ""}, // if META was never written, it will not be detected
+		},
 		"STATE": {
-			Name: "xfs",
+			Names: []string{"xfs"},
 		},
 		"EPHEMERAL": {
-			Name: "xfs",
+			Names: []string{"xfs"},
 		},
 	}
 
 	for iterator := volumes.Iterator(); iterator.Next(); {
 		dv := iterator.Value()
 
-		suite.T().Logf("Volume: %s %s %s %s", dv.Metadata().ID(), dv.TypedSpec().Name, dv.TypedSpec().PartitionLabel, dv.TypedSpec().Label)
+		suite.T().Logf("volume: %s %s %s %s", dv.Metadata().ID(), dv.TypedSpec().Name, dv.TypedSpec().PartitionLabel, dv.TypedSpec().Label)
 
 		partitionLabel := dv.TypedSpec().PartitionLabel
 		filesystemLabel := dv.TypedSpec().Label
 
-		// this is encrypted partition, skip it, we should see another device with actual filesystem
+		// this is encrypted partition, skip it, we should see another device with the actual filesystem
 		if dv.TypedSpec().Name == "luks" {
 			continue
 		}
@@ -95,12 +102,77 @@ func (suite *VolumesSuite) TestDiscoveredVolumes() {
 			}
 		}
 
-		suite.Assert().Equal(expected.Name, dv.TypedSpec().Name)
+		suite.Assert().Contains(expected.Names, dv.TypedSpec().Name, "node: %s", node)
 
 		delete(expectedVolumes, id)
 	}
 
-	suite.Assert().Empty(expectedVolumes)
+	suite.Assert().Empty(expectedVolumes, "node: ", node)
+
+	if suite.T().Failed() {
+		suite.DumpLogs(suite.ctx, node, "controller-runtime", "block.")
+	}
+}
+
+// TestSystemDisk verifies that Talos system disk is discovered.
+func (suite *VolumesSuite) TestSystemDisk() {
+	for _, node := range suite.DiscoverNodeInternalIPs(suite.ctx) {
+		suite.Run(node, func() {
+			ctx := client.WithNode(suite.ctx, node)
+
+			systemDisk, err := safe.StateGetByID[*block.SystemDisk](ctx, suite.Client.COSI, block.SystemDiskID)
+			suite.Require().NoError(err)
+
+			suite.Assert().NotEmpty(systemDisk.TypedSpec().DiskID)
+
+			suite.T().Logf("system disk: %s", systemDisk.TypedSpec().DiskID)
+		})
+	}
+}
+
+// TestDisks verifies that Talos discovers disks.
+func (suite *VolumesSuite) TestDisks() {
+	for _, node := range suite.DiscoverNodeInternalIPs(suite.ctx) {
+		suite.Run(node, func() {
+			ctx := client.WithNode(suite.ctx, node)
+
+			disks, err := safe.StateListAll[*block.Disk](ctx, suite.Client.COSI)
+			suite.Require().NoError(err)
+
+			// there should be at least two disks - loop0 for Talos squashfs and a system disk
+			suite.Assert().Greater(disks.Len(), 1)
+
+			var diskNames []string
+
+			for iter := disks.Iterator(); iter.Next(); {
+				disk := iter.Value()
+
+				if disk.TypedSpec().Readonly {
+					continue
+				}
+
+				if !disk.TypedSpec().CDROM {
+					suite.Assert().NotEmpty(disk.TypedSpec().Size, "disk: %s", disk.Metadata().ID())
+				}
+
+				suite.Assert().NotEmpty(disk.TypedSpec().IOSize, "disk: %s", disk.Metadata().ID())
+				suite.Assert().NotEmpty(disk.TypedSpec().SectorSize, "disk: %s", disk.Metadata().ID())
+
+				if suite.Cluster != nil {
+					// running on our own provider, transport should be always detected
+					if disk.TypedSpec().BusPath == "/virtual" {
+						suite.Assert().Empty(disk.TypedSpec().Transport, "disk: %s", disk.Metadata().ID())
+					} else {
+						suite.Assert().NotEmpty(disk.TypedSpec().Transport, "disk: %s", disk.Metadata().ID())
+					}
+				}
+
+				diskNames = append(diskNames, disk.Metadata().ID())
+			}
+
+			suite.T().Logf("disks: %v", diskNames)
+		})
+	}
 }
 
 func init() {

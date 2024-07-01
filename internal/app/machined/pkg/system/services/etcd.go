@@ -16,10 +16,10 @@ import (
 	"strings"
 	"time"
 
-	containerdapi "github.com/containerd/containerd"
-	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/pkg/cap"
+	containerdapi "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/pkg/cap"
+	"github.com/containerd/containerd/v2/pkg/namespaces"
+	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
@@ -28,7 +28,6 @@ import (
 	"github.com/siderolabs/go-retry/retry"
 	clientv3 "go.etcd.io/etcd/client/v3"
 	snapshot "go.etcd.io/etcd/etcdutl/v3/snapshot"
-	"google.golang.org/grpc"
 
 	"github.com/siderolabs/talos/internal/app/machined/pkg/runtime"
 	"github.com/siderolabs/talos/internal/app/machined/pkg/system"
@@ -219,6 +218,7 @@ func (e *Etcd) Runner(r runtime.Runtime) (runner.Runner, error) {
 		runner.WithNamespace(constants.SystemContainerdNamespace),
 		runner.WithContainerImage(e.imgRef),
 		runner.WithEnv(env),
+		runner.WithCgroupPath(constants.CgroupEtcd),
 		runner.WithOCISpecOpts(
 			oci.WithDroppedCapabilities(cap.Known()),
 			oci.WithHostNamespace(specs.NetworkNamespace),
@@ -619,7 +619,7 @@ func promoteMember(ctx context.Context, r runtime.Runtime, memberID uint64) erro
 }
 
 func attemptPromote(ctx context.Context, endpoint string, memberID uint64) error {
-	client, err := etcd.NewClient(ctx, []string{endpoint}, grpc.WithBlock())
+	client, err := etcd.NewClient(ctx, []string{endpoint})
 	if err != nil {
 		return err
 	}

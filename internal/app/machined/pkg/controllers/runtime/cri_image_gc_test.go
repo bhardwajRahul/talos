@@ -6,7 +6,6 @@ package runtime_test
 
 import (
 	"context"
-	"reflect"
 	"slices"
 	"sort"
 	"sync"
@@ -14,7 +13,7 @@ import (
 	"time"
 
 	"github.com/benbjohnson/clock"
-	"github.com/containerd/containerd/images"
+	"github.com/containerd/containerd/v2/core/images"
 	"github.com/opencontainers/go-digest"
 	v1 "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/siderolabs/gen/maps"
@@ -179,7 +178,7 @@ func (suite *CRIImageGCSuite) TestReconcile() {
 		imageList, _ := suite.mockImageService.List(suite.Ctx()) //nolint:errcheck
 		actualImages := xslices.Map(imageList, func(i images.Image) string { return i.Name })
 
-		if reflect.DeepEqual(expectedImages, actualImages) {
+		if slices.Equal(expectedImages, actualImages) {
 			return nil
 		}
 

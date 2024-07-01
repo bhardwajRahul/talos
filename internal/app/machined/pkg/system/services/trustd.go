@@ -13,8 +13,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/containerd/containerd/oci"
-	"github.com/containerd/containerd/pkg/cap"
+	"github.com/containerd/containerd/v2/pkg/cap"
+	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/cosi-project/runtime/api/v1alpha1"
 	"github.com/cosi-project/runtime/pkg/state"
 	"github.com/cosi-project/runtime/pkg/state/protobuf/server"
@@ -155,6 +155,7 @@ func (t *Trustd) Runner(r runtime.Runtime) (runner.Runner, error) {
 		runner.WithLoggingManager(r.Logging()),
 		runner.WithContainerdAddress(constants.SystemContainerdAddress),
 		runner.WithEnv(env),
+		runner.WithCgroupPath(constants.CgroupTrustd),
 		runner.WithOCISpecOpts(
 			containerd.WithMemoryLimit(int64(1000000*512)),
 			oci.WithDroppedCapabilities(cap.Known()),

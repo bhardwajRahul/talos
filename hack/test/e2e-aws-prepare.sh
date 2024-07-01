@@ -19,7 +19,7 @@ function get_ami_id() {
 function cloud_image_upload_with_extensions() {
   case "${1}" in
     nvidia-oss)
-      EXTENSIONS=$(jq -R < "${EXTENSIONS_METADATA_FILE}" | jq -rs 'map(select(. | contains("nvidia") and (contains("nvidia-fabricmanager") or contains("nonfree-kmod-nvidia") | not))) | .[] |= "--system-extension-image=" + . | join(" ")')
+      EXTENSIONS=$(jq -R < "${EXTENSIONS_METADATA_FILE}" | jq -rs 'map(select(. | (contains("nvidia") or contains("zfs")) and (contains("nvidia-fabricmanager") or contains("nonfree-kmod-nvidia") | not))) | .[] |= "--system-extension-image=" + . | join(" ")')
       ;;
     nvidia-oss-fabricmanager)
       EXTENSIONS=$(jq -R < "${EXTENSIONS_METADATA_FILE}" | jq -rs 'map(select(. | contains("nvidia") and (contains("nonfree-kmod-nvidia") | not))) | .[] |= "--system-extension-image=" + . | join(" ")')
@@ -59,7 +59,7 @@ esac
 
 mkdir -p "${ARTIFACTS}/e2e-aws-generated"
 
-NAME_PREFIX="talos-e2e-${SHA}-aws"
+NAME_PREFIX="talos-e2e-${SHA}-aws-${E2E_AWS_TARGET}"
 
 jq --null-input \
   --arg WORKER_GROUP "${WORKER_GROUP}" \

@@ -15,17 +15,18 @@ CLOUD_IMAGES_EXTRA_ARGS ?= ""
 ZSTD_COMPRESSION_LEVEL ?= 18
 
 ARTIFACTS := _out
-TOOLS ?= ghcr.io/siderolabs/tools:v1.8.0-alpha.0-3-g7e5a248
+TOOLS ?= ghcr.io/siderolabs/tools:v1.8.0-alpha.0-5-gd2746e5
 
 PKGS_PREFIX ?= ghcr.io/siderolabs
-PKGS ?= v1.8.0-alpha.0-16-g9ebfd1b
-EXTRAS ?= v1.8.0-alpha.0-1-g01ad9f5
+PKGS ?= v1.8.0-alpha.0-29-g84bad89
+EXTRAS ?= v1.8.0-alpha.0-2-g0efb05f
 
 KRES_IMAGE ?= ghcr.io/siderolabs/kres:latest
 CONFORMANCE_IMAGE ?= ghcr.io/siderolabs/conform:latest
 
 PKG_FHS ?= $(PKGS_PREFIX)/fhs:$(PKGS)
 PKG_CA_CERTIFICATES ?= $(PKGS_PREFIX)/ca-certificates:$(PKGS)
+PKG_APPARMOR ?= $(PKGS_PREFIX)/apparmor:$(PKGS)
 PKG_CRYPTSETUP ?= $(PKGS_PREFIX)/cryptsetup:$(PKGS)
 PKG_CONTAINERD ?= $(PKGS_PREFIX)/containerd:$(PKGS)
 PKG_DOSFSTOOLS ?= $(PKGS_PREFIX)/dosfstools:$(PKGS)
@@ -54,17 +55,17 @@ PKG_TALOSCTL_CNI_BUNDLE_INSTALL ?= $(PKGS_PREFIX)/talosctl-cni-bundle-install:$(
 # renovate: datasource=github-tags depName=golang/go
 GO_VERSION ?= 1.22
 # renovate: datasource=go depName=golang.org/x/tools
-GOIMPORTS_VERSION ?= v0.20.0
+GOIMPORTS_VERSION ?= v0.21.0
 # renovate: datasource=go depName=mvdan.cc/gofumpt
 GOFUMPT_VERSION ?= v0.6.0
 # renovate: datasource=go depName=github.com/golangci/golangci-lint
-GOLANGCILINT_VERSION ?= v1.58.0
+GOLANGCILINT_VERSION ?= v1.59.0
 # renovate: datasource=go depName=golang.org/x/tools
-STRINGER_VERSION ?= v0.19.0
+STRINGER_VERSION ?= v0.21.0
 # renovate: datasource=go depName=github.com/dmarkham/enumer
 ENUMER_VERSION ?= v1.5.9
 # renovate: datasource=go depName=k8s.io/code-generator
-DEEPCOPY_GEN_VERSION ?= v0.30.0
+DEEPCOPY_GEN_VERSION ?= v0.30.1
 # renovate: datasource=go depName=github.com/planetscale/vtprotobuf
 VTPROTOBUF_VERSION ?= v0.6.0
 # renovate: datasource=go depName=github.com/siderolabs/deep-copy
@@ -92,11 +93,11 @@ KUBECTL_VERSION ?= v1.30.1
 # renovate: datasource=github-releases depName=kastenhq/kubestr
 KUBESTR_VERSION ?= v0.4.44
 # renovate: datasource=github-releases depName=helm/helm
-HELM_VERSION ?= v3.14.4
+HELM_VERSION ?= v3.15.1
 # renovate: datasource=github-releases depName=kubernetes-sigs/cluster-api
-CLUSTERCTL_VERSION ?= 1.7.1
+CLUSTERCTL_VERSION ?= 1.7.2
 # renovate: datasource=github-releases depName=cilium/cilium-cli
-CILIUM_CLI_VERSION ?= v0.16.7
+CILIUM_CLI_VERSION ?= v0.16.9
 KUBECTL_URL ?= https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/$(OPERATING_SYSTEM)/amd64/kubectl
 KUBESTR_URL ?= https://github.com/kastenhq/kubestr/releases/download/$(KUBESTR_VERSION)/kubestr_$(subst v,,$(KUBESTR_VERSION))_Linux_amd64.tar.gz
 HELM_URL ?= https://get.helm.sh/helm-$(HELM_VERSION)-linux-amd64.tar.gz
@@ -177,6 +178,7 @@ COMMON_ARGS += --build-arg=REGISTRY=$(REGISTRY)
 COMMON_ARGS += --build-arg=PKGS_PREFIX=$(PKGS_PREFIX)
 COMMON_ARGS += --build-arg=PKG_FHS=$(PKG_FHS)
 COMMON_ARGS += --build-arg=PKG_CA_CERTIFICATES=$(PKG_CA_CERTIFICATES)
+COMMON_ARGS += --build-arg=PKG_APPARMOR=$(PKG_APPARMOR)
 COMMON_ARGS += --build-arg=PKG_CRYPTSETUP=$(PKG_CRYPTSETUP)
 COMMON_ARGS += --build-arg=PKG_CONTAINERD=$(PKG_CONTAINERD)
 COMMON_ARGS += --build-arg=PKG_DOSFSTOOLS=$(PKG_DOSFSTOOLS)
@@ -524,7 +526,7 @@ provision-tests-track-%:
 
 installer-with-extensions: $(ARTIFACTS)/extensions/_out/extensions-metadata
 	$(MAKE) image-installer \
-		IMAGER_ARGS="--base-installer-image=$(REGISTRY_AND_USERNAME)/installer:$(IMAGE_TAG) $(shell cat $(ARTIFACTS)/extensions/_out/extensions-metadata | grep -vE 'tailscale|xen-guest-agent|nvidia' | xargs -n 1 echo --system-extension-image)"
+		IMAGER_ARGS="--base-installer-image=$(REGISTRY_AND_USERNAME)/installer:$(IMAGE_TAG) $(shell cat $(ARTIFACTS)/extensions/_out/extensions-metadata | grep -vE 'tailscale|xen-guest-agent|nvidia|vmtoolsd-guest-agent' | xargs -n 1 echo --system-extension-image)"
 	crane push $(ARTIFACTS)/installer-amd64.tar $(REGISTRY_AND_USERNAME)/installer:$(IMAGE_TAG)-amd64-extensions
 	echo -n "$(REGISTRY_AND_USERNAME)/installer:$(IMAGE_TAG)-amd64-extensions" | jq -Rs -f hack/test/extensions/extension-patch-filter.jq | yq eval ".[] | split_doc" -P > $(ARTIFACTS)/extensions-patch.yaml
 

@@ -30,6 +30,7 @@ ARG PKG_LIBAIO
 ARG PKG_MUSL
 ARG PKG_RUNC
 ARG PKG_XFSPROGS
+ARG PKG_APPARMOR
 ARG PKG_UTIL_LINUX
 ARG PKG_KMOD
 ARG PKG_KERNEL
@@ -39,6 +40,9 @@ ARG PKG_TALOSCTL_CNI_BUNDLE_INSTALL
 
 FROM ${PKG_FHS} AS pkg-fhs
 FROM ${PKG_CA_CERTIFICATES} AS pkg-ca-certificates
+
+FROM --platform=amd64 ${PKG_APPARMOR} AS pkg-apparmor-amd64
+FROM --platform=arm64 ${PKG_APPARMOR} AS pkg-apparmor-arm64
 
 FROM --platform=amd64 ${PKG_CRYPTSETUP} AS pkg-cryptsetup-amd64
 FROM --platform=arm64 ${PKG_CRYPTSETUP} AS pkg-cryptsetup-arm64
@@ -558,6 +562,7 @@ COPY --from=depmod-arm64 /build/lib/modules /lib/modules
 FROM build AS rootfs-base-amd64
 COPY --link --from=pkg-fhs / /rootfs
 COPY --link --from=pkg-ca-certificates / /rootfs
+COPY --link --from=pkg-apparmor-amd64 / /rootfs
 COPY --link --from=pkg-cryptsetup-amd64 / /rootfs
 COPY --link --from=pkg-containerd-amd64 / /rootfs
 COPY --link --from=pkg-dosfstools-amd64 / /rootfs
@@ -622,6 +627,7 @@ END
 FROM build AS rootfs-base-arm64
 COPY --link --from=pkg-fhs / /rootfs
 COPY --link --from=pkg-ca-certificates / /rootfs
+COPY --link --from=pkg-apparmor-arm64 / /rootfs
 COPY --link --from=pkg-cryptsetup-arm64 / /rootfs
 COPY --link --from=pkg-containerd-arm64 / /rootfs
 COPY --link --from=pkg-dosfstools-arm64 / /rootfs
@@ -962,19 +968,16 @@ RUN --mount=type=cache,target=/.cache prototool break check --descriptor-set-pat
 
 # The markdownlint target performs linting on Markdown files.
 
-FROM node:22.1.0-alpine AS lint-markdown
+FROM oven/bun:1-alpine AS lint-markdown
 ARG MARKDOWNLINTCLI_VERSION
 ARG TEXTLINT_VERSION
 ARG TEXTLINT_FILTER_RULE_COMMENTS_VERSION
 ARG TEXTLINT_RULE_ONE_SENTENCE_PER_LINE_VERSION
 RUN apk add --no-cache findutils
-RUN npm i -g markdownlint-cli@${MARKDOWNLINTCLI_VERSION}
-RUN npm i -g textlint@${TEXTLINT_VERSION}
-RUN npm i -g textlint-filter-rule-comments@${TEXTLINT_FILTER_RULE_COMMENTS_VERSION}
-RUN npm i -g textlint-rule-one-sentence-per-line@${TEXTLINT_RULE_ONE_SENTENCE_PER_LINE_VERSION}
+RUN bun i -g markdownlint-cli@${MARKDOWNLINTCLI_VERSION} textlint@${TEXTLINT_VERSION} textlint-filter-rule-comments@${TEXTLINT_FILTER_RULE_COMMENTS_VERSION} textlint-rule-one-sentence-per-line@${TEXTLINT_RULE_ONE_SENTENCE_PER_LINE_VERSION}
 WORKDIR /src
 COPY . .
-RUN markdownlint \
+RUN bun run --bun markdownlint \
     --ignore '**/LICENCE.md' \
     --ignore '**/CHANGELOG.md' \
     --ignore '**/CODE_OF_CONDUCT.md' \
@@ -994,7 +997,7 @@ RUN find . \
     -not -path './website/content/*/reference/*' \
     -not -path './website/themes/**' \
     -print0 \
-    | xargs -0 textlint
+    | xargs -0 bun run --bun textlint
 
 # The docs target generates documentation.
 

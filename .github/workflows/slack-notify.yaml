@@ -1,6 +1,6 @@
 # THIS FILE WAS AUTOMATICALLY GENERATED, PLEASE DO NOT EDIT.
 #
-# Generated on 2024-05-16T11:03:04Z by kres 48517a9.
+# Generated on 2024-06-11T15:17:44Z by kres 7360563.
 
 name: slack-notify
 "on":
@@ -8,11 +8,16 @@ name: slack-notify
     workflows:
       - default
       - integration-qemu-cron
+      - integration-conformance-cron
       - integration-trusted-boot-cron
       - integration-provision-0-cron
       - integration-provision-1-cron
       - integration-provision-2-cron
-      - integration-misc-cron
+      - integration-misc-0-cron
+      - integration-misc-1-cron
+      - integration-misc-2-cron
+      - integration-misc-3-cron
+      - integration-misc-4-cron
       - integration-extensions-cron
       - integration-cilium-cron
       - integration-qemu-encrypted-vip-cron

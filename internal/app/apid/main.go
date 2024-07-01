@@ -13,8 +13,8 @@ import (
 	"fmt"
 	"log"
 	"os/signal"
-	"reflect"
 	"regexp"
+	"slices"
 	"syscall"
 	"time"
 
@@ -73,7 +73,7 @@ func apidMain() error {
 
 	startup.LimitMaxProcs(constants.ApidMaxProcs)
 
-	runtimeConn, err := grpc.Dial("unix://"+constants.APIRuntimeSocketPath, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	runtimeConn, err := grpc.NewClient("unix://"+constants.APIRuntimeSocketPath, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return fmt.Errorf("failed to dial runtime connection: %w", err)
 	}
@@ -260,7 +260,7 @@ func verifyExtKeyUsage(rawCerts [][]byte, verifiedChains [][]*x509.Certificate) 
 			continue
 		}
 
-		if !reflect.DeepEqual(cert.ExtKeyUsage, []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}) {
+		if !slices.Equal(cert.ExtKeyUsage, []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth}) {
 			return fmt.Errorf("certificate %q is missing the client auth extended key usage", cert.Subject)
 		}
 	}

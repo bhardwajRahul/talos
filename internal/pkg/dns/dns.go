@@ -10,7 +10,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand/v2"
 	"net"
 	"net/netip"
 	"slices"
@@ -22,6 +21,7 @@ import (
 
 	"github.com/coredns/coredns/plugin"
 	"github.com/coredns/coredns/plugin/cache"
+	"github.com/coredns/coredns/plugin/pkg/dnsutil"
 	"github.com/coredns/coredns/plugin/pkg/proxy"
 	"github.com/coredns/coredns/request"
 	"github.com/miekg/dns"
@@ -37,7 +37,11 @@ type Cache struct {
 
 // NewCache creates a new Cache.
 func NewCache(next plugin.Handler, l *zap.Logger) *Cache {
-	c := cache.NewCache("zones", "view")
+	c := cache.NewCache(
+		"zones",
+		"view",
+		cache.WithNegativeTTL(10*time.Second, dnsutil.MinimalDefaultTTL),
+	)
 	c.Next = next
 
 	return &Cache{cache: c, logger: l}
@@ -45,10 +49,41 @@ func NewCache(next plugin.Handler, l *zap.Logger) *Cache {
 
 // ServeDNS implements [dns.Handler].
 func (c *Cache) ServeDNS(wr dns.ResponseWriter, msg *dns.Msg) {
-	_, err := c.cache.ServeDNS(context.Background(), wr, msg)
+	wr = request.NewScrubWriter(msg, wr)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 4500*time.Millisecond)
+	defer cancel()
+
+	code, err := c.cache.ServeDNS(ctx, wr, msg)
 	if err != nil {
 		// we should probably call newProxy.Healthcheck() if there are too many errors
 		c.logger.Warn("error serving dns request", zap.Error(err))
+	}
+
+	if clientWrite(code) {
+		return
+	}
+
+	// Something went wrong
+	state := request.Request{W: wr, Req: msg}
+
+	answer := new(dns.Msg)
+	answer.SetRcode(msg, code)
+	state.SizeAndDo(answer)
+
+	err = wr.WriteMsg(answer)
+	if err != nil {
+		c.logger.Warn("error writing dns response", zap.Error(err))
+	}
+}
+
+// clientWrite returns true if the response has been written to the client.
+func clientWrite(rcode int) bool {
+	switch rcode {
+	case dns.RcodeServerFailure, dns.RcodeRefused, dns.RcodeFormatError, dns.RcodeNotImplemented:
+		return false
+	default:
+		return true
 	}
 }
 
@@ -72,6 +107,8 @@ func (h *Handler) Name() string {
 }
 
 // ServeDNS implements plugin.Handler.
+//
+//nolint:gocyclo
 func (h *Handler) ServeDNS(ctx context.Context, wrt dns.ResponseWriter, msg *dns.Msg) (int, error) {
 	h.mx.RLock()
 	defer h.mx.RUnlock()
@@ -80,53 +117,47 @@ func (h *Handler) ServeDNS(ctx context.Context, wrt dns.ResponseWriter, msg *dns
 
 	h.logger.Debug("dns request", zap.Stringer("data", msg))
 
-	upstreams := slices.Clone(h.dests)
-
-	if len(upstreams) == 0 {
-		emptyProxyErr := new(dns.Msg).SetRcode(req.Req, dns.RcodeServerFailure)
-
-		err := wrt.WriteMsg(emptyProxyErr)
-		if err != nil {
-			// We can't do much here, but at least log the error.
-			h.logger.Warn("failed to write 'no destination available' error dns response", zap.Error(err))
-		}
-
+	if len(h.dests) == 0 {
 		return dns.RcodeServerFailure, errors.New("no destination available")
 	}
-
-	rand.Shuffle(len(upstreams), func(i, j int) { upstreams[i], upstreams[j] = upstreams[j], upstreams[i] })
 
 	var (
 		resp *dns.Msg
 		err  error
 	)
 
-	for _, ups := range upstreams {
-		resp, err = ups.Connect(ctx, req, proxy.Options{})
-		if errors.Is(err, proxy.ErrCachedClosed) { // Remote side closed conn, can only happen with TCP.
-			continue
+	for _, ups := range h.dests {
+		opts := proxy.Options{}
+
+		for {
+			resp, err = ups.Connect(ctx, req, opts)
+
+			switch {
+			case errors.Is(err, proxy.ErrCachedClosed): // Remote side closed conn, can only happen with TCP.
+				continue
+			case resp != nil && resp.Truncated && !opts.ForceTCP: // Retry with TCP if truncated
+				opts.ForceTCP = true
+
+				continue
+			}
+
+			break
 		}
 
-		if err == nil {
+		if ctx.Err() != nil || err == nil {
 			break
 		}
 
 		continue
 	}
 
-	if err != nil {
+	if ctx.Err() != nil {
+		return dns.RcodeServerFailure, ctx.Err()
+	} else if err != nil {
 		return dns.RcodeServerFailure, err
 	}
 
 	if !req.Match(resp) {
-		resp = new(dns.Msg).SetRcode(req.Req, dns.RcodeFormatError)
-
-		err = wrt.WriteMsg(resp)
-		if err != nil {
-			// We can't do much here, but at least log the error.
-			h.logger.Warn("failed to write non-matched response", zap.Error(err))
-		}
-
 		h.logger.Warn("dns response didn't match", zap.Stringer("data", resp))
 
 		return dns.RcodeFormatError, nil
@@ -274,6 +305,7 @@ func NewServer(opts ServerOptions) *Server {
 			Listener:      opts.Listener,
 			PacketConn:    opts.PacketConn,
 			Handler:       opts.Handler,
+			UDPSize:       dns.DefaultMsgSize, // 4096 since default is [dns.MinMsgSize] = 512 bytes, which is too small.
 			ReadTimeout:   opts.ReadTimeout,
 			WriteTimeout:  opts.WriteTimeout,
 			IdleTimeout:   opts.IdleTimeout,

@@ -15,24 +15,32 @@ import (
 	"io"
 	"math/rand/v2"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 
 	"github.com/cosi-project/runtime/pkg/safe"
 	"github.com/cosi-project/runtime/pkg/state"
+	"github.com/siderolabs/gen/xslices"
 	"github.com/siderolabs/go-retry/retry"
 	"github.com/stretchr/testify/suite"
 	"google.golang.org/grpc/backoff"
 	"google.golang.org/grpc/codes"
+	"gopkg.in/yaml.v3"
 
 	"github.com/siderolabs/talos/cmd/talosctl/pkg/talos/helpers"
 	"github.com/siderolabs/talos/internal/app/machined/pkg/runtime"
 	"github.com/siderolabs/talos/pkg/cluster"
 	"github.com/siderolabs/talos/pkg/cluster/check"
+	"github.com/siderolabs/talos/pkg/machinery/api/common"
 	machineapi "github.com/siderolabs/talos/pkg/machinery/api/machine"
+	"github.com/siderolabs/talos/pkg/machinery/api/storage"
 	"github.com/siderolabs/talos/pkg/machinery/client"
 	clientconfig "github.com/siderolabs/talos/pkg/machinery/client/config"
 	"github.com/siderolabs/talos/pkg/machinery/config"
+	configconfig "github.com/siderolabs/talos/pkg/machinery/config/config"
+	"github.com/siderolabs/talos/pkg/machinery/config/configpatcher"
+	"github.com/siderolabs/talos/pkg/machinery/config/container"
 	"github.com/siderolabs/talos/pkg/machinery/config/machine"
 	"github.com/siderolabs/talos/pkg/machinery/config/types/v1alpha1"
 	"github.com/siderolabs/talos/pkg/machinery/constants"
@@ -500,7 +508,11 @@ func (apiSuite *APISuite) UserDisks(ctx context.Context, node string, sizeGreate
 
 	for _, msg := range resp.Messages {
 		for _, disk := range msg.Disks {
-			if disk.SystemDisk {
+			if disk.SystemDisk || disk.Readonly || disk.Type == storage.Disk_CD {
+				continue
+			}
+
+			if disk.BusPath == "/virtual" {
 				continue
 			}
 
@@ -573,6 +585,59 @@ func (apiSuite *APISuite) AssertExpectedModules(ctx context.Context, node string
 		apiSuite.Require().Contains(loadedModules, module, "expected %s to be loaded", module)
 		apiSuite.Require().Contains(modulesDep, moduleDep, "expected %s to be in modules.dep", moduleDep)
 	}
+}
+
+// UpdateMachineConfig fetches machine configuration, patches it and applies the changes.
+func (apiSuite *APISuite) UpdateMachineConfig(nodeCtx context.Context, patch func(config.Provider) (config.Provider, error)) {
+	cfg, err := apiSuite.ReadConfigFromNode(nodeCtx)
+	apiSuite.Require().NoError(err)
+
+	patchedCfg, err := patch(cfg)
+	apiSuite.Require().NoError(err)
+
+	bytes, err := patchedCfg.Bytes()
+	apiSuite.Require().NoError(err)
+
+	resp, err := apiSuite.Client.ApplyConfiguration(nodeCtx, &machineapi.ApplyConfigurationRequest{
+		Data: bytes,
+		Mode: machineapi.ApplyConfigurationRequest_AUTO,
+	})
+	apiSuite.Require().NoError(err)
+
+	apiSuite.T().Logf("patched machine config: %s", resp.Messages[0].ModeDetails)
+}
+
+// PatchMachineConfig patches machine configuration on the node.
+func (apiSuite *APISuite) PatchMachineConfig(nodeCtx context.Context, patches ...any) {
+	configPatches := make([]configpatcher.Patch, 0, len(patches))
+
+	for _, patch := range patches {
+		marshaled, err := yaml.Marshal(patch)
+		apiSuite.Require().NoError(err)
+
+		configPatch, err := configpatcher.LoadPatch(marshaled)
+		apiSuite.Require().NoError(err)
+
+		configPatches = append(configPatches, configPatch)
+	}
+
+	apiSuite.UpdateMachineConfig(nodeCtx, func(cfg config.Provider) (config.Provider, error) {
+		out, err := configpatcher.Apply(configpatcher.WithConfig(cfg), configPatches)
+		if err != nil {
+			return nil, err
+		}
+
+		return out.Config()
+	})
+}
+
+// RemoveMachineConfigDocuments removes machine configuration documents of specified type from the node.
+func (apiSuite *APISuite) RemoveMachineConfigDocuments(nodeCtx context.Context, docTypes ...string) {
+	apiSuite.UpdateMachineConfig(nodeCtx, func(cfg config.Provider) (config.Provider, error) {
+		return container.New(xslices.Filter(cfg.Documents(), func(doc configconfig.Document) bool {
+			return slices.Index(docTypes, doc.Kind()) == -1
+		})...)
+	})
 }
 
 // PatchV1Alpha1Config patches v1alpha1 config in the config provider.
@@ -685,6 +750,34 @@ waitLoop:
 			apiSuite.Assert().NotEqual(preReset, postReset, "reset should lead to new kubelet cert being generated")
 		} else {
 			apiSuite.Assert().Equal(preReset, postReset, "ephemeral partition was not reset")
+		}
+	}
+}
+
+// DumpLogs dumps a set of logs from the node.
+func (apiSuite *APISuite) DumpLogs(ctx context.Context, node string, service, pattern string) {
+	nodeCtx := client.WithNode(ctx, node)
+
+	logsStream, err := apiSuite.Client.Logs(
+		nodeCtx,
+		constants.SystemContainerdNamespace,
+		common.ContainerDriver_CONTAINERD,
+		service,
+		false,
+		-1,
+	)
+	apiSuite.Require().NoError(err)
+
+	logReader, err := client.ReadStream(logsStream)
+	apiSuite.Require().NoError(err)
+
+	defer logReader.Close() //nolint:errcheck
+
+	scanner := bufio.NewScanner(logReader)
+
+	for scanner.Scan() {
+		if pattern == "" || strings.Contains(scanner.Text(), pattern) {
+			apiSuite.T().Logf("%s (%s): %s", node, service, scanner.Text())
 		}
 	}
 }

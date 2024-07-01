@@ -92,6 +92,8 @@ func (ctrl *Controller) Run(ctx context.Context, drainer *runtime.Drainer) error
 			V1Alpha1Mode: ctrl.v1alpha1Runtime.State().Platform().Mode(),
 		},
 		&block.DiscoveryController{},
+		&block.DisksController{},
+		&block.SystemDiskController{},
 		&cluster.AffiliateMergeController{},
 		cluster.NewConfigController(),
 		&cluster.DiscoveryServiceController{},
@@ -132,6 +134,9 @@ func (ctrl *Controller) Run(ctx context.Context, drainer *runtime.Drainer) error
 		&files.EtcFileController{
 			EtcPath:    "/etc",
 			ShadowPath: constants.SystemEtcPath,
+		},
+		&hardware.PCIDevicesController{
+			V1Alpha1Mode: ctrl.v1alpha1Runtime.State().Platform().Mode(),
 		},
 		&hardware.SystemInfoController{
 			V1Alpha1Mode: ctrl.v1alpha1Runtime.State().Platform().Mode(),
@@ -260,6 +265,8 @@ func (ctrl *Controller) Run(ctx context.Context, drainer *runtime.Drainer) error
 		&runtimecontrollers.DevicesStatusController{
 			V1Alpha1Mode: ctrl.v1alpha1Runtime.State().Platform().Mode(),
 		},
+		&runtimecontrollers.DiagnosticsController{},
+		&runtimecontrollers.DiagnosticsLoggerController{},
 		&runtimecontrollers.DropUpgradeFallbackController{
 			MetaProvider: ctrl.v1alpha1Runtime.State().Machine(),
 		},
@@ -329,6 +336,7 @@ func (ctrl *Controller) Run(ctx context.Context, drainer *runtime.Drainer) error
 			V1Alpha1Mode: ctrl.v1alpha1Runtime.State().Platform().Mode(),
 		},
 		&siderolink.ManagerController{},
+		&siderolink.StatusController{},
 		&siderolink.UserspaceWireguardController{
 			RelayRetryTimeout: 10 * time.Second,
 		},

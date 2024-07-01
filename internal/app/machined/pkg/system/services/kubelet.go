@@ -11,9 +11,9 @@ import (
 	"os"
 	"time"
 
-	containerdapi "github.com/containerd/containerd"
-	"github.com/containerd/containerd/namespaces"
-	"github.com/containerd/containerd/oci"
+	containerdapi "github.com/containerd/containerd/v2/client"
+	"github.com/containerd/containerd/v2/pkg/namespaces"
+	"github.com/containerd/containerd/v2/pkg/oci"
 	"github.com/cosi-project/runtime/pkg/resource"
 	"github.com/cosi-project/runtime/pkg/state"
 	specs "github.com/opencontainers/runtime-spec/specs-go"
@@ -157,9 +157,9 @@ func (k *Kubelet) Runner(r runtime.Runtime) (runner.Runner, error) {
 		runner.WithNamespace(constants.SystemContainerdNamespace),
 		runner.WithContainerImage(k.imgRef),
 		runner.WithEnv(environment.Get(r.Config())),
+		runner.WithCgroupPath(constants.CgroupKubelet),
 		runner.WithOCISpecOpts(
 			containerd.WithRootfsPropagation("shared"),
-			oci.WithCgroup(constants.CgroupKubelet),
 			oci.WithMounts(mounts),
 			oci.WithHostNamespace(specs.NetworkNamespace),
 			oci.WithHostNamespace(specs.PIDNamespace),

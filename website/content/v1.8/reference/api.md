@@ -29,6 +29,8 @@ description: Talos gRPC API reference.
 - [resource/definitions/block/block.proto](#resource/definitions/block/block.proto)
     - [DeviceSpec](#talos.resource.definitions.block.DeviceSpec)
     - [DiscoveredVolumeSpec](#talos.resource.definitions.block.DiscoveredVolumeSpec)
+    - [DiskSpec](#talos.resource.definitions.block.DiskSpec)
+    - [SystemDiskSpec](#talos.resource.definitions.block.SystemDiskSpec)
   
 - [resource/definitions/cluster/cluster.proto](#resource/definitions/cluster/cluster.proto)
     - [AffiliateSpec](#talos.resource.definitions.cluster.AffiliateSpec)
@@ -95,6 +97,7 @@ description: Talos gRPC API reference.
   
 - [resource/definitions/hardware/hardware.proto](#resource/definitions/hardware/hardware.proto)
     - [MemoryModuleSpec](#talos.resource.definitions.hardware.MemoryModuleSpec)
+    - [PCIDeviceSpec](#talos.resource.definitions.hardware.PCIDeviceSpec)
     - [ProcessorSpec](#talos.resource.definitions.hardware.ProcessorSpec)
     - [SystemInformationSpec](#talos.resource.definitions.hardware.SystemInformationSpec)
   
@@ -161,6 +164,7 @@ description: Talos gRPC API reference.
     - [BondSlave](#talos.resource.definitions.network.BondSlave)
     - [BridgeMasterSpec](#talos.resource.definitions.network.BridgeMasterSpec)
     - [BridgeSlave](#talos.resource.definitions.network.BridgeSlave)
+    - [BridgeVLANSpec](#talos.resource.definitions.network.BridgeVLANSpec)
     - [DHCP4OperatorSpec](#talos.resource.definitions.network.DHCP4OperatorSpec)
     - [DHCP6OperatorSpec](#talos.resource.definitions.network.DHCP6OperatorSpec)
     - [DNSResolveCacheSpec](#talos.resource.definitions.network.DNSResolveCacheSpec)
@@ -214,6 +218,7 @@ description: Talos gRPC API reference.
   
 - [resource/definitions/runtime/runtime.proto](#resource/definitions/runtime/runtime.proto)
     - [DevicesStatusSpec](#talos.resource.definitions.runtime.DevicesStatusSpec)
+    - [DiagnosticSpec](#talos.resource.definitions.runtime.DiagnosticSpec)
     - [EventSinkConfigSpec](#talos.resource.definitions.runtime.EventSinkConfigSpec)
     - [ExtensionServiceConfigFile](#talos.resource.definitions.runtime.ExtensionServiceConfigFile)
     - [ExtensionServiceConfigSpec](#talos.resource.definitions.runtime.ExtensionServiceConfigSpec)
@@ -251,6 +256,7 @@ description: Talos gRPC API reference.
   
 - [resource/definitions/siderolink/siderolink.proto](#resource/definitions/siderolink/siderolink.proto)
     - [ConfigSpec](#talos.resource.definitions.siderolink.ConfigSpec)
+    - [StatusSpec](#talos.resource.definitions.siderolink.StatusSpec)
     - [TunnelSpec](#talos.resource.definitions.siderolink.TunnelSpec)
   
 - [resource/definitions/time/time.proto](#resource/definitions/time/time.proto)
@@ -806,6 +812,48 @@ DiscoveredVolumeSpec is the spec for DiscoveredVolumes status.
 | type | [string](#string) |  |  |
 | device_path | [string](#string) |  |  |
 | parent | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="talos.resource.definitions.block.DiskSpec"></a>
+
+### DiskSpec
+DiskSpec is the spec for Disks status.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| size | [uint64](#uint64) |  |  |
+| io_size | [uint64](#uint64) |  |  |
+| sector_size | [uint64](#uint64) |  |  |
+| readonly | [bool](#bool) |  |  |
+| model | [string](#string) |  |  |
+| serial | [string](#string) |  |  |
+| modalias | [string](#string) |  |  |
+| wwid | [string](#string) |  |  |
+| bus_path | [string](#string) |  |  |
+| sub_system | [string](#string) |  |  |
+| transport | [string](#string) |  |  |
+| rotational | [bool](#bool) |  |  |
+| cdrom | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="talos.resource.definitions.block.SystemDiskSpec"></a>
+
+### SystemDiskSpec
+SystemDiskSpec is the spec for SystemDisks status.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| disk_id | [string](#string) |  |  |
 
 
 
@@ -1848,6 +1896,28 @@ MemoryModuleSpec represents a single Memory.
 | serial_number | [string](#string) |  |  |
 | asset_tag | [string](#string) |  |  |
 | product_name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="talos.resource.definitions.hardware.PCIDeviceSpec"></a>
+
+### PCIDeviceSpec
+PCIDeviceSpec represents a single processor.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| class | [string](#string) |  |  |
+| subclass | [string](#string) |  |  |
+| vendor | [string](#string) |  |  |
+| product | [string](#string) |  |  |
+| class_id | [string](#string) |  |  |
+| subclass_id | [string](#string) |  |  |
+| vendor_id | [string](#string) |  |  |
+| product_id | [string](#string) |  |  |
 
 
 
@@ -2946,6 +3016,7 @@ BridgeMasterSpec describes bridge settings if Kind == "bridge".
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | stp | [STPSpec](#talos.resource.definitions.network.STPSpec) |  |  |
+| vlan | [BridgeVLANSpec](#talos.resource.definitions.network.BridgeVLANSpec) |  |  |
 
 
 
@@ -2961,6 +3032,21 @@ BridgeSlave contains a bond's master name and slave index.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | master_name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="talos.resource.definitions.network.BridgeVLANSpec"></a>
+
+### BridgeVLANSpec
+BridgeVLANSpec describes VLAN settings of a bridge.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filtering_enabled | [bool](#bool) |  |  |
 
 
 
@@ -3934,6 +4020,22 @@ DevicesStatusSpec is the spec for devices status.
 
 
 
+<a name="talos.resource.definitions.runtime.DiagnosticSpec"></a>
+
+### DiagnosticSpec
+DiagnosticSpec is the spec for devices status.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| message | [string](#string) |  |  |
+| details | [string](#string) | repeated |  |
+
+
+
+
+
+
 <a name="talos.resource.definitions.runtime.EventSinkConfigSpec"></a>
 
 ### EventSinkConfigSpec
@@ -4522,6 +4624,22 @@ ConfigSpec describes Siderolink configuration.
 | join_token | [string](#string) |  |  |
 | insecure | [bool](#bool) |  |  |
 | tunnel | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="talos.resource.definitions.siderolink.StatusSpec"></a>
+
+### StatusSpec
+StatusSpec describes Siderolink status.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| host | [string](#string) |  |  |
+| connected | [bool](#bool) |  |  |
 
 
 
@@ -8024,6 +8142,7 @@ DisksResponse represents the response of the `Disks` RPC.
 | HDD | 2 |  |
 | NVME | 3 |  |
 | SD | 4 |  |
+| CD | 5 |  |
 
 
  <!-- end enums -->

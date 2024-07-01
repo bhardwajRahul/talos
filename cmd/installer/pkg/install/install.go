@@ -228,7 +228,7 @@ func NewInstaller(ctx context.Context, cmdline *procfs.Cmdline, mode Mode, opts 
 //
 //nolint:gocyclo,cyclop
 func (i *Installer) Install(ctx context.Context, mode Mode) (err error) {
-	errataBTF()
+	errataArm64ZBoot()
 
 	if mode == ModeUpgrade {
 		if err = i.errataNetIfnames(); err != nil {
@@ -445,7 +445,7 @@ func retryBlockdeviceOpen(device string) (*blockdevice.BlockDevice, error) {
 		switch {
 		case os.IsNotExist(openErr):
 			return retry.ExpectedError(openErr)
-		case errors.Is(openErr, syscall.ENODEV):
+		case errors.Is(openErr, syscall.ENODEV), errors.Is(openErr, syscall.ENXIO):
 			return retry.ExpectedError(openErr)
 		default:
 			return nil

@@ -8,7 +8,6 @@ package network_test
 import (
 	"context"
 	"fmt"
-	"log"
 	"math/rand/v2"
 	"net/netip"
 	"os"
@@ -25,12 +24,12 @@ import (
 	"github.com/siderolabs/go-retry/retry"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
+	"go.uber.org/zap/zaptest"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	networkadapter "github.com/siderolabs/talos/internal/app/machined/pkg/adapters/network"
 	"github.com/siderolabs/talos/internal/app/machined/pkg/controllers/ctest"
 	netctrl "github.com/siderolabs/talos/internal/app/machined/pkg/controllers/network"
-	"github.com/siderolabs/talos/pkg/logging"
 	"github.com/siderolabs/talos/pkg/machinery/nethelpers"
 	"github.com/siderolabs/talos/pkg/machinery/resources/network"
 	runtimeres "github.com/siderolabs/talos/pkg/machinery/resources/runtime"
@@ -59,7 +58,7 @@ func (suite *LinkSpecSuite) SetupTest() {
 
 	var err error
 
-	suite.runtime, err = runtime.NewRuntime(suite.state, logging.Wrap(log.Writer()))
+	suite.runtime, err = runtime.NewRuntime(suite.state, zaptest.NewLogger(suite.T()))
 	suite.Require().NoError(err)
 
 	// create fake device ready status
@@ -703,9 +702,10 @@ func (suite *LinkSpecSuite) TestBridge() {
 		),
 	)
 
-	// attempt to enable STP
+	// attempt to enable STP & VLAN filtering
 	ctest.UpdateWithConflicts(suite, bridge, func(r *network.LinkSpec) error {
 		r.TypedSpec().BridgeMaster.STP.Enabled = true
+		r.TypedSpec().BridgeMaster.VLAN.FilteringEnabled = true
 
 		return nil
 	})
@@ -718,6 +718,12 @@ func (suite *LinkSpecSuite) TestBridge() {
 						if !r.TypedSpec().BridgeMaster.STP.Enabled {
 							return retry.ExpectedErrorf(
 								"stp is not enabled on bridge %s", r.Metadata().ID(),
+							)
+						}
+
+						if !r.TypedSpec().BridgeMaster.VLAN.FilteringEnabled {
+							return retry.ExpectedErrorf(
+								"vlan filtering is not enabled on bridge %s", r.Metadata().ID(),
 							)
 						}
 

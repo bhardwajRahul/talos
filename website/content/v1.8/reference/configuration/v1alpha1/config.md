@@ -1358,6 +1358,7 @@ machine:
 |-------|------|-------------|----------|
 |`interfaces` |[]string |The interfaces that make up the bridge.  | |
 |`stp` |<a href="#Config.machine.network.interfaces..bridge.stp">STP</a> |<details><summary>A bridge option.</summary>Please see the official kernel documentation.</details>  | |
+|`vlan` |<a href="#Config.machine.network.interfaces..bridge.vlan">BridgeVLAN</a> |<details><summary>A bridge option.</summary>Please see the official kernel documentation.</details>  | |
 
 
 
@@ -1372,6 +1373,22 @@ STP contains the various options for configuring the STP properties of a bridge 
 | Field | Type | Description | Value(s) |
 |-------|------|-------------|----------|
 |`enabled` |bool |Whether Spanning Tree Protocol (STP) is enabled.  | |
+
+
+
+
+
+
+###### vlan {#Config.machine.network.interfaces..bridge.vlan}
+
+BridgeVLAN contains the various options for configuring the VLAN properties of a bridge interface.
+
+
+
+
+| Field | Type | Description | Value(s) |
+|-------|------|-------------|----------|
+|`vlanFiltering` |bool |Whether VLAN filtering is enabled.  | |
 
 
 
@@ -2958,7 +2975,7 @@ discovery:
 {{< /highlight >}}</details> | |
 |`etcd` |<a href="#Config.cluster.etcd">EtcdConfig</a> |Etcd specific configuration options. <details><summary>Show example(s)</summary>{{< highlight yaml >}}
 etcd:
-    image: gcr.io/etcd-development/etcd:v3.5.13 # The container image used to create the etcd service.
+    image: gcr.io/etcd-development/etcd:v3.5.14 # The container image used to create the etcd service.
     # The `ca` is the root certificate authority of the PKI.
     ca:
         crt: LS0tIEVYQU1QTEUgQ0VSVElGSUNBVEUgLS0t
@@ -3644,7 +3661,7 @@ EtcdConfig represents the etcd configuration options.
 {{< highlight yaml >}}
 cluster:
     etcd:
-        image: gcr.io/etcd-development/etcd:v3.5.13 # The container image used to create the etcd service.
+        image: gcr.io/etcd-development/etcd:v3.5.14 # The container image used to create the etcd service.
         # The `ca` is the root certificate authority of the PKI.
         ca:
             crt: LS0tIEVYQU1QTEUgQ0VSVElGSUNBVEUgLS0t
@@ -3662,7 +3679,7 @@ cluster:
 | Field | Type | Description | Value(s) |
 |-------|------|-------------|----------|
 |`image` |string |The container image used to create the etcd service. <details><summary>Show example(s)</summary>{{< highlight yaml >}}
-image: gcr.io/etcd-development/etcd:v3.5.13
+image: gcr.io/etcd-development/etcd:v3.5.14
 {{< /highlight >}}</details> | |
 |`ca` |PEMEncodedCertificateAndKey |<details><summary>The `ca` is the root certificate authority of the PKI.</summary>It is composed of a base64 encoded `crt` and `key`.</details> <details><summary>Show example(s)</summary>{{< highlight yaml >}}
 ca:

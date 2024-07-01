@@ -5,10 +5,8 @@
 package nethelpers
 
 import (
-	"github.com/jsimonetti/rtnetlink"
+	"github.com/jsimonetti/rtnetlink/v2"
 )
-
-//go:generate enumer -type=OperationalState -linecomment -text
 
 // OperationalState wraps rtnetlink.OperationalState for YAML marshaling.
 type OperationalState uint8

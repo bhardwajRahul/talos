@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"net"
 	"net/netip"
 	"os"
 	"os/exec"
@@ -73,7 +74,7 @@ type LaunchConfig struct {
 	IPXEBootFileName string
 
 	// API
-	APIPort int
+	APIBindAddress *net.TCPAddr
 
 	// sd-stub
 	sdStubExtraCmdline       string
@@ -81,7 +82,7 @@ type LaunchConfig struct {
 
 	// filled by CNI invocation
 	tapName string
-	vmMAC   string
+	VMMac   string
 	nsPath  string
 
 	// signals
@@ -120,7 +121,7 @@ func launchVM(config *LaunchConfig) error {
 		"-cpu", cpuArg,
 		"-nographic",
 		"-netdev", fmt.Sprintf("tap,id=net0,ifname=%s,script=no,downscript=no", config.tapName),
-		"-device", fmt.Sprintf("virtio-net-pci,netdev=net0,mac=%s", config.vmMAC),
+		"-device", fmt.Sprintf("virtio-net-pci,netdev=net0,mac=%s", config.VMMac),
 		// TODO: uncomment the following line to get another eth interface not connected to anything
 		// "-nic", "tap,model=virtio-net-pci",
 		"-device", "virtio-rng-pci",
@@ -402,7 +403,12 @@ func Launch() error {
 	config.c = vm.ConfigureSignals()
 	config.controller = NewController()
 
-	httpServer, err := vm.NewHTTPServer(config.GatewayAddrs[0], config.APIPort, []byte(config.Config), config.controller)
+	apiBindAddrs, err := netip.ParseAddr(config.APIBindAddress.IP.String())
+	if err != nil {
+		return err
+	}
+
+	httpServer, err := vm.NewHTTPServer(apiBindAddrs, config.APIBindAddress.Port, []byte(config.Config), config.controller)
 	if err != nil {
 		return err
 	}
@@ -410,15 +416,14 @@ func Launch() error {
 	httpServer.Serve()
 	defer httpServer.Shutdown(ctx) //nolint:errcheck
 
-	// patch kernel args
-	config.sdStubExtraCmdline = "console=ttyS0"
-
-	if strings.Contains(config.KernelArgs, "{TALOS_CONFIG_URL}") {
-		config.KernelArgs = strings.ReplaceAll(config.KernelArgs, "{TALOS_CONFIG_URL}", fmt.Sprintf("http://%s/config.yaml", httpServer.GetAddr()))
-		config.sdStubExtraCmdlineConfig = fmt.Sprintf(" talos.config=http://%s/config.yaml", httpServer.GetAddr())
-	}
+	patchKernelArgs(&config, httpServer.GetAddr().String())
 
 	return withNetworkContext(ctx, &config, func(config *LaunchConfig) error {
+		err = dumpIpam(*config)
+		if err != nil {
+			return err
+		}
+
 		for {
 			for config.controller.PowerState() != PoweredOn {
 				select {
@@ -438,6 +443,15 @@ func Launch() error {
 	})
 }
 
+func patchKernelArgs(config *LaunchConfig, httpServerAddr string) {
+	config.sdStubExtraCmdline = "console=ttyS0"
+
+	if strings.Contains(config.KernelArgs, "{TALOS_CONFIG_URL}") {
+		config.KernelArgs = strings.ReplaceAll(config.KernelArgs, "{TALOS_CONFIG_URL}", fmt.Sprintf("http://%s/config.yaml", httpServerAddr))
+		config.sdStubExtraCmdlineConfig = fmt.Sprintf(" talos.config=http://%s/config.yaml", httpServerAddr)
+	}
+}
+
 func waitForFileToExist(path string, timeout time.Duration) error {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
@@ -454,4 +468,40 @@ func waitForFileToExist(path string, timeout time.Duration) error {
 
 		time.Sleep(100 * time.Millisecond)
 	}
+}
+
+func dumpIpam(config LaunchConfig) error {
+	for j := range config.CIDRs {
+		nameservers := make([]netip.Addr, 0, len(config.Nameservers))
+
+		// filter nameservers by IPv4/IPv6 matching IPs
+		for i := range config.Nameservers {
+			if config.IPs[j].Is6() {
+				if config.Nameservers[i].Is6() {
+					nameservers = append(nameservers, config.Nameservers[i])
+				}
+			} else {
+				if config.Nameservers[i].Is4() {
+					nameservers = append(nameservers, config.Nameservers[i])
+				}
+			}
+		}
+
+		// dump node IP/mac/hostname for dhcp
+		if err := vm.DumpIPAMRecord(config.StatePath, vm.IPAMRecord{
+			IP:               config.IPs[j],
+			Netmask:          byte(config.CIDRs[j].Bits()),
+			MAC:              config.VMMac,
+			Hostname:         config.Hostname,
+			Gateway:          config.GatewayAddrs[j],
+			MTU:              config.MTU,
+			Nameservers:      nameservers,
+			TFTPServer:       config.TFTPServer,
+			IPXEBootFilename: config.IPXEBootFileName,
+		}); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }

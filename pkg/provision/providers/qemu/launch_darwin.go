@@ -9,15 +9,16 @@ import (
 	"os/exec"
 )
 
+// withNetworkContext runs the f on the host network on darwin.
 func withNetworkContext(ctx context.Context, config *LaunchConfig, f func(config *LaunchConfig) error) error {
-	panic("not implemented")
+	return f(config)
 }
 
 func checkPartitions(config *LaunchConfig) (bool, error) {
 	panic("not implemented")
 }
 
-// startQemuCmd on darwin just runs cmd.Start
+// startQemuCmd on darwin just runs cmd.Start.
 func startQemuCmd(_ *LaunchConfig, cmd *exec.Cmd) error {
 	return cmd.Start()
 }

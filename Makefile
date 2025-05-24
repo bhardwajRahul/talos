@@ -25,9 +25,9 @@ DEBUG_TOOLS_SOURCE := scratch
 EMBED_TARGET ?= embed
 
 TOOLS_PREFIX ?= ghcr.io/siderolabs/tools
-TOOLS ?= v1.11.0-alpha.0
+TOOLS ?= v1.11.0-alpha.0-1-ge35234b
 PKGS_PREFIX ?= ghcr.io/siderolabs
-PKGS ?= v1.11.0-alpha.0-6-ga347857
+PKGS ?= v1.11.0-alpha.0-25-g8c4603e
 
 KRES_IMAGE ?= ghcr.io/siderolabs/kres:latest
 CONFORMANCE_IMAGE ?= ghcr.io/siderolabs/conform:latest
@@ -68,6 +68,7 @@ PKG_LVM2 ?= $(PKGS_PREFIX)/lvm2:$(PKGS)
 PKG_MTOOLS ?= $(PKGS_PREFIX)/mtools:$(PKGS)
 PKG_MUSL ?= $(PKGS_PREFIX)/musl:$(PKGS)
 PKG_OPENSSL ?= $(PKGS_PREFIX)/openssl:$(PKGS)
+PKG_OPEN_VMDK ?= $(PKGS_PREFIX)/open-vmdk:$(PKGS)
 PKG_PCRE2 ?= $(PKGS_PREFIX)/pcre2:$(PKGS)
 PKG_PIGZ ?= $(PKGS_PREFIX)/pigz:$(PKGS)
 PKG_QEMU_TOOLS ?= $(PKGS_PREFIX)/qemu-tools:$(PKGS)
@@ -86,17 +87,17 @@ PKG_ZSTD ?= $(PKGS_PREFIX)/zstd:$(PKGS)
 # renovate: datasource=github-tags depName=golang/go
 GO_VERSION ?= 1.24
 # renovate: datasource=go depName=golang.org/x/tools
-GOIMPORTS_VERSION ?= v0.32.0
+GOIMPORTS_VERSION ?= v0.33.0
 # renovate: datasource=go depName=mvdan.cc/gofumpt
 GOFUMPT_VERSION ?= v0.8.0
 # renovate: datasource=go depName=github.com/golangci/golangci-lint
-GOLANGCILINT_VERSION ?= v2.1.1
+GOLANGCILINT_VERSION ?= v2.1.6
 # renovate: datasource=go depName=golang.org/x/tools
-STRINGER_VERSION ?= v0.32.0
+STRINGER_VERSION ?= v0.33.0
 # renovate: datasource=go depName=github.com/dmarkham/enumer
 ENUMER_VERSION ?= v1.5.11
 # renovate: datasource=go depName=k8s.io/code-generator
-DEEPCOPY_GEN_VERSION ?= v0.32.3
+DEEPCOPY_GEN_VERSION ?= v0.33.0
 # renovate: datasource=go depName=github.com/planetscale/vtprotobuf
 VTPROTOBUF_VERSION ?= v0.6.0
 # renovate: datasource=go depName=github.com/siderolabs/deep-copy
@@ -110,7 +111,7 @@ PROTOC_GEN_DOC_VERSION ?= v1.5.1
 # renovate: datasource=npm depName=markdownlint-cli
 MARKDOWNLINTCLI_VERSION ?= 0.44.0
 # renovate: datasource=npm depName=textlint
-TEXTLINT_VERSION ?= 14.6.0
+TEXTLINT_VERSION ?= 14.7.1
 # renovate: datasource=npm depName=textlint-filter-rule-comments
 TEXTLINT_FILTER_RULE_COMMENTS_VERSION ?= 1.2.2
 # renovate: datasource=npm depName=textlint-rule-one-sentence-per-line
@@ -125,9 +126,9 @@ INTEGRATION_TEST := integration-test
 INTEGRATION_TEST_DEFAULT_TARGET := $(INTEGRATION_TEST)-$(OPERATING_SYSTEM)
 INTEGRATION_TEST_PROVISION_DEFAULT_TARGET := integration-test-provision-$(OPERATING_SYSTEM)
 # renovate: datasource=github-releases depName=kubernetes/kubernetes
-KUBECTL_VERSION ?= v1.33.0
+KUBECTL_VERSION ?= v1.33.1
 # renovate: datasource=github-releases depName=kastenhq/kubestr
-KUBESTR_VERSION ?= v0.4.48
+KUBESTR_VERSION ?= v0.4.49
 # renovate: datasource=github-releases depName=helm/helm
 HELM_VERSION ?= v3.17.3
 # renovate: datasource=github-releases depName=cilium/cilium-cli
@@ -249,6 +250,7 @@ COMMON_ARGS += --build-arg=PKG_LVM2=$(PKG_LVM2)
 COMMON_ARGS += --build-arg=PKG_MTOOLS=$(PKG_MTOOLS)
 COMMON_ARGS += --build-arg=PKG_MUSL=$(PKG_MUSL)
 COMMON_ARGS += --build-arg=PKG_OPENSSL=$(PKG_OPENSSL)
+COMMON_ARGS += --build-arg=PKG_OPEN_VMDK=$(PKG_OPEN_VMDK)
 COMMON_ARGS += --build-arg=PKG_PCRE2=$(PKG_PCRE2)
 COMMON_ARGS += --build-arg=PKG_PIGZ=$(PKG_PIGZ)
 COMMON_ARGS += --build-arg=PKG_QEMU_TOOLS=$(PKG_QEMU_TOOLS)
@@ -366,13 +368,13 @@ hack-test-%: ## Runs the specified script in ./hack/test with well known environ
 
 .PHONY: generate
 generate: ## Generates code from protobuf service definitions and machinery config.
-	@$(MAKE) local-$@ DEST=./ PLATFORM=$(OPERATING_SYSTEM)/$(ARCH) EMBED_TARGET=embed-abbrev
+	@$(MAKE) local-$@ DEST=./ PLATFORM=linux/$(ARCH) EMBED_TARGET=embed-abbrev
 
 .PHONY: docs
 docs: ## Generates the documentation for machine config, and talosctl.
 	@rm -rf docs/configuration/*
 	@rm -rf docs/talosctl/*
-	@$(MAKE) local-$@ DEST=./ PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) local-$@ DEST=./ PLATFORM=linux/amd64
 
 .PHONY: docs-preview
 docs-preview: ## Starts a local preview of the documentation using Hugo in docker
@@ -505,7 +507,6 @@ cloud-images: ## Uploads cloud images (AMIs, etc.) to the cloud registry.
 	@docker run --rm -v $(PWD):/src -w /src \
 		-e TAG=$(TAG) -e ARTIFACTS=$(ARTIFACTS) -e ABBREV_TAG=$(ABBREV_TAG) \
 		-e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \
-		-e AZURE_SUBSCRIPTION_ID -e AZURE_CLIENT_ID -e AZURE_CLIENT_SECRET -e AZURE_TENANT_ID \
 		-e GOOGLE_PROJECT_ID -e GOOGLE_CREDENTIALS \
 		golang:$(GO_VERSION) \
 		./hack/cloud-image-uploader.sh $(CLOUD_IMAGES_EXTRA_ARGS)
@@ -527,19 +528,19 @@ cache-create: installer imager ## Generate image cache.
 # Code Quality
 
 api-descriptors: ## Generates API descriptors used to detect breaking API changes.
-	@$(MAKE) local-api-descriptors DEST=./ PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) local-api-descriptors DEST=./ PLATFORM=linux/$(ARCH)
 
 fmt-go: ## Formats the source code.
 	@docker run --rm -it -v $(PWD):/src -w /src -e GOTOOLCHAIN=local golang:$(GO_VERSION) bash -c "go install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION) && goimports -w -local github.com/siderolabs/talos . && go install mvdan.cc/gofumpt@$(GOFUMPT_VERSION) && gofumpt -w ."
 
 fmt-protobuf: ## Formats protobuf files.
-	@$(MAKE) local-fmt-protobuf DEST=./ PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) local-fmt-protobuf DEST=./ PLATFORM=linux/$(ARCH)
 
 fmt: ## Formats the source code and protobuf files.
 	@$(MAKE) fmt-go fmt-protobuf
 
 lint-%: ## Runs the specified linter. Valid options are go, protobuf, and markdown (e.g. lint-go).
-	@$(MAKE) target-lint-$* PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) target-lint-$* PLATFORM=linux/$(ARCH)
 
 lint: ## Runs linters on go, vulncheck, protobuf, and markdown file types.
 	@$(MAKE) lint-go lint-vulncheck lint-protobuf lint-markdown
@@ -548,17 +549,17 @@ check-dirty: ## Verifies that source tree is not dirty
 	@if test -n "`git status --porcelain`"; then echo "Source tree is dirty"; git status; git diff; exit 1 ; fi
 
 go-mod-outdated: ## Runs the go-mod-oudated to show outdated dependencies.
-	@$(MAKE) target-go-mod-outdated PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) target-go-mod-outdated PLATFORM=linux/$(ARCH)
 
 # Tests
 
 .PHONY: unit-tests
 unit-tests: ## Performs unit tests.
-	@$(MAKE) local-$@ DEST=$(ARTIFACTS) TARGET_ARGS="--allow security.insecure" PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) local-$@ DEST=$(ARTIFACTS) TARGET_ARGS="--allow security.insecure" PLATFORM=linux/$(ARCH)
 
 .PHONY: unit-tests-race
 unit-tests-race: ## Performs unit tests with race detection enabled.
-	@$(MAKE) target-$@ TARGET_ARGS="--allow security.insecure" PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) target-$@ TARGET_ARGS="--allow security.insecure" PLATFORM=linux/$(ARCH)
 
 $(ARTIFACTS)/$(INTEGRATION_TEST_DEFAULT_TARGET)-amd64:
 	@$(MAKE) local-$(INTEGRATION_TEST_DEFAULT_TARGET)-amd64 DEST=$(ARTIFACTS) PLATFORM=linux/amd64 WITH_RACE=true PUSH=false
@@ -708,8 +709,9 @@ sign-images: ## Run cosign to sign all images built by this Makefile.
 .PHONY: reproducibility-test
 reproducibility-test:
 	@$(MAKE) reproducibility-test-local-initramfs
-	@$(MAKE) reproducibility-test-docker-installer-base INSTALLER_ARCH=targetarch PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
-	@$(MAKE) reproducibility-test-docker-talos reproducibility-test-docker-imager reproducibility-test-docker-talosctl PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) reproducibility-test-docker-installer-base INSTALLER_ARCH=targetarch PLATFORM=linux/$(ARCH)
+	@$(MAKE) reproducibility-test-docker-talos reproducibility-test-docker-installer-base reproducibility-test-docker-imager reproducibility-test-docker-talosctl PLATFORM=linux/$(ARCH)
+	@$(MAKE) reproducibility-test-iso
 
 reproducibility-test-docker-%:
 	@rm -rf _out1/ _out2/
@@ -725,6 +727,16 @@ reproducibility-test-local-%:
 	@$(MAKE) local-$* DEST=_out1/
 	@$(MAKE) local-$* DEST=_out2/ TARGET_ARGS="--no-cache"
 	@find _out1/ -type f | xargs -IFILE diffoscope FILE `echo FILE | sed 's/_out1/_out2/'`
+	@rm -rf _out1/ _out2/
+
+reproducibility-test-iso:
+	@rm -rf _out1/ _out2/
+	@mkdir -p _out1/ _out2/
+	@$(MAKE) iso
+	mv $(ARTIFACTS)/metal-amd64.iso _out1/metal-amd64.iso
+	@$(MAKE) iso
+	mv $(ARTIFACTS)/metal-amd64.iso _out2/metal-amd64.iso
+	@diffoscope _out1/metal-amd64.iso _out2/metal-amd64.iso
 	@rm -rf _out1/ _out2/
 
 .PHONY: ci-temp-release-tag

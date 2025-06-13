@@ -9,13 +9,14 @@ spec:
   config: |-
     creation_rules:
       - age: age1xrpa9ujxxcj2u2gzfrzv8mxak4rts94a6y60ypurv6rs5cpr4e4sg95f0k
-        # order: Andrey, Noel, Artem, Utku, Dmitriy
+        # order: Andrey, Noel, Artem, Utku, Tim, Andy
         pgp: >-
           15D5721F5F5BAF121495363EFE042E3D4085A811,
           CC51116A94490FA6FB3C18EB2401FCAE863A06CA,
           4919F560F0D35F80CF382D76E084A2DF1143C14D,
           11177A43C6E3752E682AC690DBD13117B0A14E93,
-          AA5213AF261C1977AF38B03A94B473337258BFD5
+          5D7964FF2DB426ACB3C3505AA2A702DD5B689F45,
+          E77ED9F8451E10BD242D07415444881046F92733
 ---
 kind: common.Repository
 spec:
@@ -114,6 +115,7 @@ spec:
             PUSH: true
         - name: lint
         - name: talosctl-cni-bundle
+        - name: sbom
         - name: iso
           command: iso secureboot-iso
           environment:
@@ -204,6 +206,7 @@ spec:
               - metal-arm64-uki.efi
               - metal-amd64.raw.zst
               - metal-arm64.raw.zst
+              - sbom.json
               - talosctl-cni-bundle-amd64.tar.gz
               - talosctl-cni-bundle-arm64.tar.gz
               - talosctl-darwin-amd64
@@ -315,6 +318,7 @@ spec:
         - '30 3 * * *'
       triggerLabels:
         - integration/qemu
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -369,6 +373,7 @@ spec:
         - '30 3 * * *'
       triggerLabels:
         - integration/qemu-enforcing
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -439,6 +444,7 @@ spec:
         - '30 4 * * *'
       triggerLabels:
         - integration/conformance
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -561,6 +567,7 @@ spec:
         - '30 3 * * *'
       triggerLabels:
         - integration/trusted-boot
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -709,6 +716,7 @@ spec:
       triggerLabels:
         - integration/provision
         - integration/provision-0
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -772,6 +780,7 @@ spec:
       triggerLabels:
         - integration/provision
         - integration/provision-1
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -823,6 +832,7 @@ spec:
       triggerLabels:
         - integration/provision
         - integration/provision-2
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -874,6 +884,7 @@ spec:
       triggerLabels:
         - integration/misc
         - integration/misc-0
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -959,6 +970,7 @@ spec:
       triggerLabels:
         - integration/misc
         - integration/misc-1
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -1049,6 +1061,7 @@ spec:
       triggerLabels:
         - integration/misc-enforcing
         - integration/misc-1-enforcing
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -1155,6 +1168,7 @@ spec:
       triggerLabels:
         - integration/misc
         - integration/misc-2
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -1277,6 +1291,7 @@ spec:
       triggerLabels:
         - integration/misc
         - integration/misc-3
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -1437,6 +1452,7 @@ spec:
       triggerLabels:
         - integration/misc
         - integration/misc-4
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -1525,6 +1541,7 @@ spec:
       triggerLabels:
         - integration/misc-enforcing
         - integration/misc-4-enforcing
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -1637,6 +1654,7 @@ spec:
         - '30 6 * * *'
       triggerLabels:
         - integration/extensions
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -1720,6 +1738,7 @@ spec:
         - '30 3 * * *'
       triggerLabels:
         - integration/cilium
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -1800,6 +1819,7 @@ spec:
         - '30 3 * * *'
       triggerLabels:
         - integration/qemu-encrypted-vip
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -1855,6 +1875,7 @@ spec:
         - '30 3 * * *'
       triggerLabels:
         - integration/qemu-race
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -1921,6 +1942,7 @@ spec:
       triggerLabels:
         - integration/qemu-csi
         - integration/qemu-csi-rook-ceph
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -1988,6 +2010,7 @@ spec:
         - integration/qemu-csi
         - integration/extensions # since iscsi is tested with longhorn
         - integration/qemu-csi-longhorn
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -2082,6 +2105,7 @@ spec:
       triggerLabels:
         - integration/qemu-csi
         - integration/qemu-csi-openebs
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -2148,6 +2172,7 @@ spec:
         - '30 2 * * *'
       triggerLabels:
         - integration/images
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -2186,6 +2211,7 @@ spec:
         - '30 2 * * *'
       triggerLabels:
         - integration/reproducibility-test
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -2247,6 +2273,7 @@ spec:
         - '30 2 * * *'
       triggerLabels:
         - integration/image-cache
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -2444,6 +2471,7 @@ spec:
         - '30 7 * * *'
       triggerLabels:
         - integration/aws
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -2711,6 +2739,7 @@ spec:
         - '30 7 * * *'
       triggerLabels:
         - integration/gcp
+        - integration/release-gate
       steps:
         - name: download-artifacts
           conditions:
@@ -2773,25 +2802,25 @@ kind: common.Renovate
 spec:
   customManagers:
     - customType: regex
-      fileMatch:
+      managerFilePatterns:
         - Makefile
       matchStrings:
         - '# renovate: datasource=(?<datasource>.*?)(?:\s+extractVersion=(?<extractVersion>.+?))?\s+depName=(?<depName>.+?)\s.*_VERSION\s+\?=\s+(?<currentValue>.+)'
       versioningTemplate: "{{#if versioning}}{{versioning}}{{else}}semver{{/if}}"
     - customType: regex
-      fileMatch:
+      managerFilePatterns:
         - pkg/machinery/constants/constants.go
       matchStrings:
         - '\/\/\s+renovate: datasource=(?<datasource>.*?)(?:\s+extractVersion=(?<extractVersion>.+?))?(?:\s+versioning=(?<versioning>.+?))?\s+depName=(?<depName>.+?)?\s.*Version\s+=\s+\"(?<currentValue>.+?)\"'
       versioningTemplate: "{{#if versioning}}{{versioning}}{{else}}semver{{/if}}"
     - customType: regex
-      fileMatch:
+      managerFilePatterns:
         - internal/integration/k8s/constants.go
       matchStrings:
         - '\/\/\s+renovate: datasource=(?<datasource>.*?)(?:\s+extractVersion=(?<extractVersion>.+?))?(?:\s+versioning=(?<versioning>.+?))?\s+depName=(?<depName>.+?)?(?:\s+registryUrl=(?<registryUrl>.+?))?\s.*Version\s+=\s+\"(?<currentValue>.+?)\"'
       versioningTemplate: "{{#if versioning}}{{versioning}}{{else}}semver{{/if}}"
     - customType: regex
-      fileMatch:
+      managerFilePatterns:
         - Dockerfile
       matchStrings:
         - '# syntax = docker\/dockerfile-upstream:(?<currentValue>.*)'

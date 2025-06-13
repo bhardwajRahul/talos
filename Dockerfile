@@ -1,4 +1,4 @@
-# syntax = docker/dockerfile-upstream:1.14.1-labs
+# syntax = docker/dockerfile-upstream:1.16.0-labs
 
 # Meta args applied to stage base names.
 
@@ -46,6 +46,7 @@ ARG PKG_LVM2=scratch
 ARG PKG_MTOOLS=scratch
 ARG PKG_MUSL=scratch
 ARG PKG_OPENSSL=scratch
+ARG PKG_OPEN_VMDK=scratch
 ARG PKG_PCRE2=scratch
 ARG PKG_PIGZ=scratch
 ARG PKG_QEMU_TOOLS=scratch
@@ -188,6 +189,7 @@ FROM ${PKG_LIBURCU} AS pkg-liburcu
 FROM ${PKG_MTOOLS} AS pkg-mtools
 FROM ${PKG_MUSL} AS pkg-musl
 FROM ${PKG_OPENSSL} AS pkg-openssl
+FROM ${PKG_OPEN_VMDK} AS pkg-open-vmdk
 FROM ${PKG_PCRE2} AS pkg-pcre2
 FROM ${PKG_PIGZ} AS pkg-pigz
 FROM ${PKG_QEMU_TOOLS} AS pkg-qemu-tools
@@ -447,6 +449,30 @@ FROM scratch AS microsoft-db-keys
 COPY --from=microsoft-secureboot-database /DB/Certificates/MicCor*.der /db/
 COPY --from=microsoft-secureboot-database /DB/Certificates/microsoft*.der /db/
 
+FROM build-go AS sbom-generate
+COPY ./tools ./tools
+
+ARG SOURCE_DATE_EPOCH
+ENV SYFT_FORMAT_SPDX_JSON_CREATED_TIME=${SOURCE_DATE_EPOCH}
+ENV SYFT_FORMAT_PRETTY=1
+ENV SYFT_FORMAT_SPDX_JSON_DETERMINISTIC_UUID=1
+
+ARG NAME
+ARG TAG
+
+RUN mkdir -p sbom-src /usr/share/sbom
+# TODO: copy pkgs SBOMs to sbom-src when we generate them
+RUN cp go.mod go.sum sbom-src
+RUN --mount=type=cache,target=/.cache,id=talos/.cache go tool -modfile=tools/go.mod \
+    github.com/anchore/syft/cmd/syft \
+    scan --from dir sbom-src \
+    --select-catalogers "+sbom-cataloger,go" \
+    --source-name "${NAME}" --source-version "${TAG}" \
+    -o spdx-json > /usr/share/sbom/sbom.json
+
+FROM scratch AS sbom
+COPY --from=sbom-generate /usr/share/sbom/sbom.json /
+
 FROM --platform=${BUILDPLATFORM} scratch AS generate
 COPY --from=proto-format-build /src/api /api/
 COPY --from=generate-build /api/common/*.pb.go /pkg/machinery/api/common/
@@ -522,15 +548,17 @@ FROM base AS machined-build-amd64
 WORKDIR /src/internal/app/machined
 ARG GO_BUILDFLAGS
 ARG GO_LDFLAGS
+ARG GO_MACHINED_LDFLAGS
 ARG GOAMD64
-RUN --mount=type=cache,target=/.cache,id=talos/.cache GOOS=linux GOARCH=amd64 GOAMD64=${GOAMD64} go build ${GO_BUILDFLAGS} -ldflags "${GO_LDFLAGS}" -o /machined
+RUN --mount=type=cache,target=/.cache,id=talos/.cache GOOS=linux GOARCH=amd64 GOAMD64=${GOAMD64} go build ${GO_BUILDFLAGS} -ldflags "${GO_LDFLAGS} ${GO_MACHINED_LDFLAGS}" -o /machined
 RUN chmod +x /machined
 
 FROM base AS machined-build-arm64
 WORKDIR /src/internal/app/machined
 ARG GO_BUILDFLAGS
 ARG GO_LDFLAGS
-RUN --mount=type=cache,target=/.cache,id=talos/.cache GOOS=linux GOARCH=arm64 go build ${GO_BUILDFLAGS} -ldflags "${GO_LDFLAGS}" -o /machined
+ARG GO_MACHINED_LDFLAGS
+RUN --mount=type=cache,target=/.cache,id=talos/.cache GOOS=linux GOARCH=arm64 go build ${GO_BUILDFLAGS} -ldflags "${GO_LDFLAGS} ${GO_MACHINED_LDFLAGS}" -o /machined
 RUN chmod +x /machined
 
 FROM machined-build-${TARGETARCH} AS machined-build
@@ -942,6 +970,8 @@ ENTRYPOINT ["/sbin/init"]
 
 # The installer target generates an image that can be used to install Talos to
 # various environments.
+
+# Make the installer binary.
 FROM base AS installer-build
 ARG GO_BUILDFLAGS
 ARG GO_LDFLAGS
@@ -950,6 +980,7 @@ ARG TARGETARCH
 RUN --mount=type=cache,target=/.cache,id=talos/.cache GOOS=linux GOARCH=${TARGETARCH} go build ${GO_BUILDFLAGS} -ldflags "${GO_LDFLAGS}" -o /installer
 RUN chmod +x /installer
 
+# Make the images containing the boot artifacts.
 FROM scratch AS install-artifacts-amd64
 COPY --from=pkg-kernel-amd64 /boot/vmlinuz /usr/install/amd64/vmlinuz
 COPY --from=initramfs-archive-amd64 /initramfs.xz /usr/install/amd64/initramfs.xz
@@ -970,17 +1001,18 @@ FROM install-artifacts-${TARGETARCH} AS install-artifacts-targetarch
 
 FROM install-artifacts-${INSTALLER_ARCH} AS install-artifacts
 
+# Add the installer with a symlink as 'imager' and a /rootfs dir containing only the installer.
 FROM tools AS installer-image-gen
 COPY --from=installer-build /installer /rootfs/usr/bin/installer
 RUN ln -s installer /rootfs/usr/bin/imager
 
+# Add the installer binary and the tools needed to run the installer.
 FROM scratch AS installer-base-image
 ARG TARGETARCH
 ENV TARGETARCH=${TARGETARCH}
 COPY --link --from=pkg-fhs / /
 COPY --link --from=pkg-ca-certificates / /
 COPY --link --exclude=**/*.a --exclude=**/*.la --exclude=usr/include --from=pkg-musl / /
-
 COPY --link --from=pkg-dosfstools / /
 COPY --link --exclude=etc/bash_completion.d --from=pkg-grub / /
 COPY --link --exclude=**/*.a --exclude=**/*.la  --exclude=usr/include --exclude=usr/lib/pkgconfig --from=pkg-libattr / /
@@ -988,11 +1020,16 @@ COPY --link --exclude=**/*.a --exclude=**/*.la  --exclude=usr/include --exclude=
 COPY --link --exclude=**/*.a --exclude=**/*.la  --exclude=usr/include --exclude=usr/lib/pkgconfig --from=pkg-liblzma / /
 COPY --link --exclude=**/*.a --exclude=**/*.la  --exclude=usr/include --exclude=usr/lib/pkgconfig --from=pkg-liburcu / /
 COPY --link --from=pkg-xfsprogs / /
+# Only copy the installer binary and none of the tools used for building it.
 COPY --link --from=installer-image-gen /rootfs /
 
+# Squash the installer-base-image layers to reduce size.
 FROM scratch AS installer-base-image-squashed
 COPY --from=installer-base-image / /
 
+# Add metadata.
+# 'installer-base' only contains the installer binary and the tools it uses.
+# 'installer-base' does not contain boot assets or talos itself.
 FROM installer-base-image-squashed AS installer-base
 ARG TAG
 ENV VERSION=${TAG}
@@ -1000,6 +1037,9 @@ LABEL "alpha.talos.dev/version"="${VERSION}"
 LABEL org.opencontainers.image.source=https://github.com/siderolabs/talos
 ENTRYPOINT ["/bin/installer"]
 
+# Imager can be thought of as an extended installer.
+# It has the boot artifacts and tools to build any requested talos image with desired modifications and system extensions.
+# Imager is meant to be run outside of talos and the talos installation flow.
 FROM installer-base-image-squashed AS imager-image
 COPY --link --from=pkg-cpio / /
 COPY --link --exclude=**/*.a --exclude=**/*.la  --exclude=usr/lib/pkgconfig --from=pkg-e2fsprogs / /
@@ -1012,6 +1052,7 @@ COPY --link --exclude=**/*.a --exclude=**/*.la  --exclude=usr/include --exclude=
 COPY --link --exclude=**/*.a --exclude=**/*.la  --exclude=usr/include --exclude=usr/lib/pkgconfig --from=pkg-libisofs / /
 COPY --link --from=pkg-mtools / /
 COPY --link --exclude=**/*.a --exclude=**/*.la  --exclude=usr/include --exclude=usr/lib/pkgconfig --exclude=usr/lib/cmake --from=pkg-openssl / /
+COPY --link --from=pkg-open-vmdk / /
 COPY --link --exclude=**/*.a --exclude=**/*.la  --exclude=usr/include --exclude=usr/lib/pkgconfig --from=pkg-pcre2 / /
 COPY --link --from=pkg-pigz / /
 COPY --link --from=pkg-qemu-tools / /

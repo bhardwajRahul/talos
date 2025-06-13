@@ -18,6 +18,40 @@ preface = """
     [notes.updates]
         title = "Component Updates"
         description = """\
+Linux: 6.12.31
+Kubernetes: 1.33.1
+runc: 1.3.0
+containerd: 2.1.1
+Flannel CNI plugin: 1.7.1-flannel1
+Flannel: 0.27.0
+
+Talos is built with Go 1.24.4.
+"""
+
+    [notes.macos-qemu]
+        title = "Qemu provisioner on MacOS"
+                description = """\
+On MacOS `talosctl cluster create` command now supports the Qemu provisioner in addition to the Docker provisioner.
+"""
+
+    [notes.ima]
+        title = "IMA support removed"
+        description = """\
+Talos now drops the IMA (Integrity Measurement Architecture) support. This feature was not used in Talos for any meaningful security purpose
+and has historically caused performance issues. See #11133 for more details.
+"""
+
+    [notes.swap]
+        title = "Swap Suport"
+        description = """\
+Talos now supports swap on block devices.
+This feature can be enable by using [SwapVolumeConfig](https://www.talos.dev/v1.11/reference/configuration/block/swapvolumeconfig/) document in the machine configuration.  
+"""
+
+    [notes.vmware]
+        title = "VMware"
+        description = """\
+Talos VMWare platform now supports `arm64` architecture in addition to `amd64`.
 """
 
 [make_deps]

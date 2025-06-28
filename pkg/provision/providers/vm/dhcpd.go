@@ -25,6 +25,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/siderolabs/talos/pkg/provision"
+	"github.com/siderolabs/talos/pkg/provision/providers/vm/internal/ethtool"
 )
 
 //nolint:gocyclo
@@ -226,6 +227,10 @@ func DHCPd(ifName string, ips []net.IP, statePath string) error {
 		return fmt.Errorf("error looking up interface: %w", err)
 	}
 
+	if err := ethtool.TXOff(iface.Name); err != nil {
+		return fmt.Errorf("error disabling TX checksum offload: %w", err)
+	}
+
 	var eg errgroup.Group
 
 	for _, ip := range ips {
@@ -270,8 +275,8 @@ const (
 	dhcpLog = "dhcpd.log"
 )
 
-// CreateDHCPd creates DHCPd.
-func (p *Provisioner) CreateDHCPd(state *State, clusterReq provision.ClusterRequest) error {
+// startDHCPd starts the DHCPd server.
+func (p *Provisioner) startDHCPd(state *State, clusterReq provision.ClusterRequest) error {
 	pidPath := state.GetRelativePath(dhcpPid)
 
 	logFile, err := os.OpenFile(state.GetRelativePath(dhcpLog), os.O_APPEND|os.O_CREATE|os.O_RDWR, 0o666)

@@ -5,6 +5,7 @@
 package qemu
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -127,7 +128,7 @@ func (p *provisioner) createNode(state *vm.State, clusterReq provision.ClusterRe
 		nodeUUID = *nodeReq.UUID
 	}
 
-	apiPort, err := p.findBridgeListenPort(clusterReq)
+	apiBind, err := p.findAPIBindAddrs(clusterReq)
 	if err != nil {
 		return provision.NodeInfo{}, fmt.Errorf("error finding listen address for the API: %w", err)
 	}
@@ -174,20 +175,16 @@ func (p *provisioner) createNode(state *vm.State, clusterReq provision.ClusterRe
 		BootloaderEnabled: opts.BootloaderEnabled,
 		NodeUUID:          nodeUUID,
 		Config:            nodeConfig,
-		BridgeName:        state.BridgeName,
-		NetworkConfig:     state.VMCNIConfig,
-		CNI:               clusterReq.Network.CNI,
-		CIDRs:             clusterReq.Network.CIDRs,
-		NoMasqueradeCIDRs: clusterReq.Network.NoMasqueradeCIDRs,
-		IPs:               nodeReq.IPs,
-		GatewayAddrs:      clusterReq.Network.GatewayAddrs,
-		MTU:               clusterReq.Network.MTU,
-		Nameservers:       clusterReq.Network.Nameservers,
 		TFTPServer:        nodeReq.TFTPServer,
 		IPXEBootFileName:  nodeReq.IPXEBootFilename,
-		APIPort:           apiPort,
+		APIBindAddress:    apiBind,
 		WithDebugShell:    opts.WithDebugShell,
 		IOMMUEnabled:      opts.IOMMUEnabled,
+		Network:           getLaunchNetworkConfig(state, clusterReq, nodeReq),
+
+		// Generate a random MAC address.
+		// On linux this is later overridden to the interface mac.
+		VMMac: getRandomMacAddress(),
 	}
 
 	if clusterReq.IPXEBootScript != "" {
@@ -207,7 +204,7 @@ func (p *provisioner) createNode(state *vm.State, clusterReq provision.ClusterRe
 
 		IPs: nodeReq.IPs,
 
-		APIPort: apiPort,
+		APIPort: apiBind.Port,
 	}
 
 	if opts.TPM1_2Enabled || opts.TPM2Enabled {
@@ -221,7 +218,7 @@ func (p *provisioner) createNode(state *vm.State, clusterReq provision.ClusterRe
 	}
 
 	if !clusterReq.Network.DHCPSkipHostname {
-		launchConfig.Hostname = nodeReq.Name
+		launchConfig.Network.Hostname = nodeReq.Name
 	}
 
 	if !nodeReq.PXEBooted && launchConfig.IPXEBootFileName == "" {
@@ -305,17 +302,6 @@ func (p *provisioner) createNodes(state *vm.State, clusterReq provision.ClusterR
 	return nodesInfo, multiErr.ErrorOrNil()
 }
 
-func (p *provisioner) findBridgeListenPort(clusterReq provision.ClusterRequest) (int, error) {
-	l, err := net.Listen("tcp", net.JoinHostPort(clusterReq.Network.GatewayAddrs[0].String(), "0"))
-	if err != nil {
-		return 0, err
-	}
-
-	port := l.Addr().(*net.TCPAddr).Port
-
-	return port, l.Close()
-}
-
 func (p *provisioner) populateSystemDisk(disks []string, clusterReq provision.ClusterRequest) error {
 	if len(disks) > 0 && clusterReq.DiskImagePath != "" {
 		if err := p.handleOptionalZSTDDiskImage(disks[0], clusterReq.DiskImagePath); err != nil {
@@ -379,4 +365,31 @@ func (p *provisioner) createMetalConfigISO(state *vm.State, nodeName, config str
 	}
 
 	return isoPath, nil
+}
+
+func getLaunchNetworkConfigBase(state *vm.State, clusterReq provision.ClusterRequest, nodeReq provision.NodeRequest) networkConfigBase {
+	return networkConfigBase{
+		BridgeName:   state.BridgeName,
+		CIDRs:        clusterReq.Network.CIDRs,
+		IPs:          nodeReq.IPs,
+		GatewayAddrs: clusterReq.Network.GatewayAddrs,
+		MTU:          clusterReq.Network.MTU,
+		Nameservers:  clusterReq.Network.Nameservers,
+	}
+}
+
+// getRandomMacAddress generates a random local MAC address
+// https://stackoverflow.com/a/21027407/10938317
+func getRandomMacAddress() string {
+	const (
+		local     = 0b10
+		multicast = 0b1
+	)
+
+	buf := make([]byte, 6)
+	rand.Read(buf) //nolint:errcheck
+	// clear multicast bit (&^), ensure local bit (|)
+	buf[0] = buf[0]&^multicast | local
+
+	return net.HardwareAddr(buf).String()
 }

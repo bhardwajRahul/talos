@@ -140,59 +140,25 @@ talosctl cluster create [flags]
 ### Options
 
 ```
-      --arch string                              cluster architecture (default "amd64")
-      --bad-rtc                                  launch VM with bad RTC state (QEMU only)
       --cidr string                              CIDR of the cluster network (IPv4, ULA network for IPv6 is derived in automated way) (default "10.5.0.0/24")
-      --cni-bin-path strings                     search path for CNI binaries (VM only) (default [/home/user/.talos/cni/bin])
-      --cni-bundle-url string                    URL to download CNI bundle from (VM only) (default "https://github.com/siderolabs/talos/releases/download/v1.11.0-alpha.0/talosctl-cni-bundle-${ARCH}.tar.gz")
-      --cni-cache-dir string                     CNI cache directory path (VM only) (default "/home/user/.talos/cni/cache")
-      --cni-conf-dir string                      CNI config directory path (VM only) (default "/home/user/.talos/cni/conf.d")
-      --config-injection-method string           a method to inject machine config: default is HTTP server, 'metal-iso' to mount an ISO (QEMU only)
       --config-patch stringArray                 patch generated machineconfigs (applied to all node types), use @file to read a patch from file
       --config-patch-control-plane stringArray   patch generated machineconfigs (applied to 'init' and 'controlplane' types)
       --config-patch-worker stringArray          patch generated machineconfigs (applied to 'worker' type)
-      --control-plane-port int                   control plane port (load balancer and local API port, QEMU only) (default 6443)
+      --control-plane-port int                   control plane port (load balancer and local API port) (default 6443)
       --controlplanes int                        the number of controlplanes to create (default 1)
       --cpus string                              the share of CPUs as fraction (each control plane/VM) (default "2.0")
       --cpus-workers string                      the share of CPUs as fraction (each worker/VM) (default "2.0")
       --custom-cni-url string                    install custom CNI from the URL (Talos cluster)
-      --disable-dhcp-hostname                    skip announcing hostname via DHCP (QEMU only)
-      --disk int                                 default limit on disk size in MB (each VM) (default 6144)
-      --disk-block-size uint                     disk block size (VM only) (default 512)
-      --disk-encryption-key-types stringArray    encryption key types to use for disk encryption (uuid, kms) (default [uuid])
-      --disk-image-path string                   disk image to use
-      --disk-preallocate                         whether disk space should be preallocated (default true)
       --dns-domain string                        the dns domain to use for cluster (default "cluster.local")
-      --docker-disable-ipv6                      skip enabling IPv6 in containers (Docker only)
-      --docker-host-ip string                    Host IP to forward exposed ports to (Docker provisioner only) (default "0.0.0.0")
-      --encrypt-ephemeral                        enable ephemeral partition encryption
-      --encrypt-state                            enable state partition encryption
-      --encrypt-user-volumes                     enable ephemeral partition encryption
       --endpoint string                          use endpoint instead of provider defaults
-  -p, --exposed-ports string                     Comma-separated list of ports/protocols to expose on init node. Ex -p <hostPort>:<containerPort>/<protocol (tcp or udp)> (Docker provisioner only)
-      --extra-boot-kernel-args string            add extra kernel args to the initial boot from vmlinuz and initramfs (QEMU only)
-      --extra-disks int                          number of extra disks to create for each worker VM
-      --extra-disks-drivers strings              driver for each extra disk (virtio, ide, ahci, scsi, nvme, megaraid)
-      --extra-disks-size int                     default limit on disk size in MB (each VM) (default 5120)
-      --extra-uefi-search-paths strings          additional search paths for UEFI firmware (only applies when UEFI is enabled)
-  -h, --help                                     help for create
-      --image string                             the image to use (default "ghcr.io/siderolabs/talos:latest")
       --init-node-as-endpoint                    use init node as endpoint instead of any load balancer endpoint
-      --initrd-path string                       initramfs image to use (default "_out/initramfs-${ARCH}.xz")
   -i, --input-dir string                         location of pre-generated config files
-      --install-image string                     the installer image to use (default "ghcr.io/siderolabs/installer:latest")
       --ipv4                                     enable IPv4 network in the cluster (default true)
-      --ipv6                                     enable IPv6 network in the cluster (QEMU provisioner only)
-      --ipxe-boot-script string                  iPXE boot script (URL) to use
-      --iso-path string                          the ISO path to use for the initial boot (VM only)
       --kubeprism-port int                       KubePrism port (set to 0 to disable) (default 7445)
-      --kubernetes-version string                desired kubernetes version to run (default "1.33.0")
+      --kubernetes-version string                desired kubernetes version to run (default "1.33.1")
       --memory int                               the limit on memory usage in MB (each control plane/VM) (default 2048)
       --memory-workers int                       the limit on memory usage in MB (each worker/VM) (default 2048)
-      --mount mount                              attach a mount to the container (Docker only)
       --mtu int                                  MTU of the cluster network (default 1500)
-      --nameservers strings                      list of nameservers to use (default [8.8.8.8,1.1.1.1,2001:4860:4860::8888,2606:4700:4700::1111])
-      --no-masquerade-cidrs strings              list of CIDRs to exclude from NAT (QEMU provisioner only)
       --registry-insecure-skip-verify strings    list of registry hostnames to skip TLS verification for
       --registry-mirror strings                  list of registry mirrors to use in format: <registry host>=<mirror URL>
       --skip-injecting-config                    skip injecting config from embedded metadata server, write config files to current directory
@@ -200,36 +166,70 @@ talosctl cluster create [flags]
       --skip-kubeconfig                          skip merging kubeconfig from the created cluster
       --talos-version string                     the desired Talos version to generate config for (if not set, defaults to image version)
       --talosconfig string                       The path to the Talos configuration file. Defaults to 'TALOSCONFIG' env variable if set, otherwise '$HOME/.talos/config' and '/var/run/secrets/talos.dev/config' in order.
-      --uki-path string                          the UKI image path to use for the initial boot (VM only)
-      --usb-path string                          the USB stick image path to use for the initial boot (VM only)
-      --use-vip                                  use a virtual IP for the controlplane endpoint instead of the loadbalancer
-      --user-volumes strings                     list of user volumes to create for each VM in format: <name1>:<size1>:<name2>:<size2>
-      --vmlinuz-path string                      the compressed kernel image to use (default "_out/vmlinuz-${ARCH}")
       --wait                                     wait for the cluster to be ready before returning (default true)
       --wait-timeout duration                    timeout to wait for the cluster to be ready (default 20m0s)
       --wireguard-cidr string                    CIDR of the wireguard network
       --with-apply-config                        enable apply config when the VM is starting in maintenance mode
-      --with-bootloader                          enable bootloader to load kernel and initramfs from disk image after install (default true)
       --with-cluster-discovery                   enable cluster discovery (default true)
       --with-debug                               enable debug in Talos config to send service logs to the console
-      --with-firewall string                     inject firewall rules into the cluster, value is default policy - accept/block (QEMU only)
       --with-init-node                           create the cluster with an init node
-      --with-iommu                               enable IOMMU support, this also add a new PCI root port and an interface attached to it (qemu only)
       --with-json-logs                           enable JSON logs receiver and configure Talos to send logs there
       --with-kubespan                            enable KubeSpan system
-      --with-network-bandwidth int               specify bandwidth restriction (in kbps) on the bridge interface when creating a qemu cluster
-      --with-network-chaos                       enable to use network chaos parameters when creating a qemu cluster
-      --with-network-jitter duration             specify jitter on the bridge interface when creating a qemu cluster
-      --with-network-latency duration            specify latency on the bridge interface when creating a qemu cluster
-      --with-network-packet-corrupt float        specify percent of corrupt packets on the bridge interface when creating a qemu cluster. e.g. 50% = 0.50 (default: 0.0)
-      --with-network-packet-loss float           specify percent of packet loss on the bridge interface when creating a qemu cluster. e.g. 50% = 0.50 (default: 0.0)
-      --with-network-packet-reorder float        specify percent of reordered packets on the bridge interface when creating a qemu cluster. e.g. 50% = 0.50 (default: 0.0)
-      --with-siderolink true                     enables the use of siderolink agent as configuration apply mechanism. true or `wireguard` enables the agent, `tunnel` enables the agent with grpc tunneling (default none)
-      --with-tpm1_2                              enable TPM 1.2 emulation support using swtpm
-      --with-tpm2                                enable TPM 2.0 emulation support using swtpm
-      --with-uefi                                enable UEFI on x86_64 architecture (default true)
-      --with-uuid-hostnames                      use machine UUIDs as default hostnames (QEMU only)
       --workers int                              the number of workers to create (default 1)
+      --arch string                              (qemu) cluster architecture (default "amd64")
+      --bad-rtc                                  (qemu) launch VM with bad RTC state
+      --cni-bin-path strings                     (qemu) search path for CNI binaries (default [/home/user/.talos/cni/bin])
+      --cni-bundle-url string                    (qemu) URL to download CNI bundle from (default "https://github.com/siderolabs/talos/releases/download/v1.11.0-alpha.1/talosctl-cni-bundle-${ARCH}.tar.gz")
+      --cni-cache-dir string                     (qemu) CNI cache directory path (default "/home/user/.talos/cni/cache")
+      --cni-conf-dir string                      (qemu) CNI config directory path (default "/home/user/.talos/cni/conf.d")
+      --config-injection-method string           (qemu) a method to inject machine config: default is HTTP server, 'metal-iso' to mount an ISO
+      --disable-dhcp-hostname                    (qemu) skip announcing hostname via DHCP
+      --disk int                                 (qemu) default limit on disk size in MB (each VM) (default 6144)
+      --disk-block-size uint                     (qemu) disk block size (default 512)
+      --disk-encryption-key-types stringArray    (qemu) encryption key types to use for disk encryption (uuid, kms) (default [uuid])
+      --disk-image-path string                   (qemu) disk image to use
+      --disk-preallocate                         (qemu) whether disk space should be preallocated (default true)
+      --encrypt-ephemeral                        (qemu) enable ephemeral partition encryption
+      --encrypt-state                            (qemu) enable state partition encryption
+      --encrypt-user-volumes                     (qemu) enable ephemeral partition encryption
+      --extra-boot-kernel-args string            (qemu) add extra kernel args to the initial boot from vmlinuz and initramfs
+      --extra-disks int                          (qemu) number of extra disks to create for each worker VM
+      --extra-disks-drivers strings              (qemu) driver for each extra disk (virtio, ide, ahci, scsi, nvme, megaraid)
+      --extra-disks-size int                     (qemu) default limit on disk size in MB (each VM) (default 5120)
+      --extra-uefi-search-paths strings          (qemu) additional search paths for UEFI firmware (only applies when UEFI is enabled)
+      --initrd-path string                       (qemu) initramfs image to use (default "_out/initramfs-${ARCH}.xz")
+      --install-image string                     (qemu) the installer image to use (default "ghcr.io/siderolabs/installer:latest")
+      --ipv6                                     (qemu) enable IPv6 network in the cluster
+      --ipxe-boot-script string                  (qemu) iPXE boot script (URL) to use
+      --iso-path string                          (qemu) the ISO path to use for the initial boot
+      --nameservers strings                      (qemu) list of nameservers to use (default [8.8.8.8,1.1.1.1,2001:4860:4860::8888,2606:4700:4700::1111])
+      --no-masquerade-cidrs strings              (qemu) list of CIDRs to exclude from NAT
+      --uki-path string                          (qemu) the UKI image path to use for the initial boot
+      --usb-path string                          (qemu) the USB stick image path to use for the initial boot
+      --use-vip                                  (qemu) use a virtual IP for the controlplane endpoint instead of the loadbalancer
+      --user-volumes strings                     (qemu) list of user volumes to create for each VM in format: <name1>:<size1>:<name2>:<size2>
+      --vmlinuz-path string                      (qemu) the compressed kernel image to use (default "_out/vmlinuz-${ARCH}")
+      --with-bootloader                          (qemu) enable bootloader to load kernel and initramfs from disk image after install (default true)
+      --with-firewall string                     (qemu) inject firewall rules into the cluster, value is default policy - accept/block
+      --with-iommu                               (qemu) enable IOMMU support, this also add a new PCI root port and an interface attached to it
+      --with-network-bandwidth int               (qemu) specify bandwidth restriction (in kbps) on the bridge interface
+      --with-network-chaos                       (qemu) enable to use network chaos parameters
+      --with-network-jitter duration             (qemu) specify jitter on the bridge interface
+      --with-network-latency duration            (qemu) specify latency on the bridge interface
+      --with-network-packet-corrupt float        (qemu) specify percent of corrupt packets on the bridge interface. e.g. 50% = 0.50 (default: 0.0)
+      --with-network-packet-loss float           (qemu) specify percent of packet loss on the bridge interface. e.g. 50% = 0.50 (default: 0.0)
+      --with-network-packet-reorder float        (qemu) specify percent of reordered packets on the bridge interface. e.g. 50% = 0.50 (default: 0.0)
+      --with-siderolink true                     (qemu) enables the use of siderolink agent as configuration apply mechanism. true or `wireguard` enables the agent, `tunnel` enables the agent with grpc tunneling (default none)
+      --with-tpm1_2                              (qemu) enable TPM 1.2 emulation support using swtpm
+      --with-tpm2                                (qemu) enable TPM 2.0 emulation support using swtpm
+      --with-uefi                                (qemu) enable UEFI on x86_64 architecture (default true)
+      --with-uuid-hostnames                      (qemu) use machine UUIDs as default hostnames
+      --docker-disable-ipv6                      (docker) skip enabling IPv6 in containers
+      --docker-host-ip string                    (docker) Host IP to forward exposed ports to (default "0.0.0.0")
+  -p, --exposed-ports string                     (docker) Comma-separated list of ports/protocols to expose on init node. Ex -p <hostPort>:<containerPort>/<protocol (tcp or udp)>
+      --image string                             (docker) the image to use (default "ghcr.io/siderolabs/talos:latest")
+      --mount mount                              (docker) attach a mount to the container
+  -h, --help                                     help for create
 ```
 
 ### Options inherited from parent commands
@@ -843,14 +843,14 @@ Provide a text-based UI to navigate node overview, logs and real-time metrics.
 
 Keyboard shortcuts:
 
- - h, &lt;Left&gt; - switch one node to the left
- - l, &lt;Right&gt; - switch one node to the right
- - j, &lt;Down&gt; - scroll logs/process list down
- - k, &lt;Up&gt; - scroll logs/process list up
- - &lt;C-d&gt; - scroll logs/process list half page down
- - &lt;C-u&gt; - scroll logs/process list half page up
- - &lt;C-f&gt; - scroll logs/process list one page down
- - &lt;C-b&gt; - scroll logs/process list one page up
+ - h, <Left> - switch one node to the left
+ - l, <Right> - switch one node to the right
+ - j, <Down> - scroll logs/process list down
+ - k, <Up> - scroll logs/process list up
+ - <C-d> - scroll logs/process list half page down
+ - <C-u> - scroll logs/process list half page up
+ - <C-f> - scroll logs/process list one page down
+ - <C-b> - scroll logs/process list one page up
 
 
 ```
@@ -1364,7 +1364,7 @@ talosctl gen config <cluster name> <cluster endpoint> [flags]
   -h, --help                                     help for config
       --install-disk string                      the disk to install to (default "/dev/sda")
       --install-image string                     the image used to perform an installation (default "ghcr.io/siderolabs/installer:latest")
-      --kubernetes-version string                desired kubernetes version to run (default "1.33.0")
+      --kubernetes-version string                desired kubernetes version to run (default "1.33.1")
   -o, --output string                            destination to output generated files. when multiple output types are specified, it must be a directory. for a single output type, it must either be a file path, or "-" for stdout
   -t, --output-types strings                     types of outputs to be generated. valid types are: ["controlplane" "worker" "talosconfig"] (default [controlplane,worker,talosconfig])
   -p, --persist                                  the desired persist value for configs (default true)
@@ -1797,7 +1797,7 @@ talosctl image cache-create [flags]
 ### Examples
 
 ```
-talosctl images cache-create --images=ghcr.io/siderolabs/kubelet:v1.33.0 --image-cache-path=/tmp/talos-image-cache
+talosctl images cache-create --images=ghcr.io/siderolabs/kubelet:v1.33.1 --image-cache-path=/tmp/talos-image-cache
 
 Alternatively, stdin can be piped to the command:
 talosctl images default | talosctl images cache-create --image-cache-path=/tmp/talos-image-cache --images=-
@@ -2982,7 +2982,7 @@ talosctl upgrade [flags]
       --debug                debug operation from kernel logs. --wait is set to true when this flag is set
   -f, --force                force the upgrade (skip checks on etcd health and members, might lead to data loss)
   -h, --help                 help for upgrade
-  -i, --image string         the container image to use for performing the install (default "ghcr.io/siderolabs/installer:v1.11.0-alpha.0")
+  -i, --image string         the container image to use for performing the install (default "ghcr.io/siderolabs/installer:v1.11.0-alpha.1")
       --insecure             upgrade using the insecure (encrypted with no auth) maintenance service
   -m, --reboot-mode string   select the reboot mode during upgrade. Mode "powercycle" bypasses kexec. Valid values are: ["default" "powercycle"]. (default "default")
   -s, --stage                stage the upgrade to perform it after a reboot
@@ -3029,7 +3029,7 @@ talosctl upgrade-k8s [flags]
       --pre-pull-images                   pre-pull images before upgrade (default true)
       --proxy-image string                kube-proxy image to use (default "registry.k8s.io/kube-proxy")
       --scheduler-image string            kube-scheduler image to use (default "registry.k8s.io/kube-scheduler")
-      --to string                         the Kubernetes control plane version to upgrade to (default "1.33.0")
+      --to string                         the Kubernetes control plane version to upgrade to (default "1.33.1")
       --upgrade-kubelet                   upgrade kubelet service (default true)
       --with-docs                         patch all machine configs adding the documentation for each field (default true)
       --with-examples                     patch all machine configs with the commented examples (default true)

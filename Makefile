@@ -25,9 +25,9 @@ DEBUG_TOOLS_SOURCE := scratch
 EMBED_TARGET ?= embed
 
 TOOLS_PREFIX ?= ghcr.io/siderolabs/tools
-TOOLS ?= v1.11.0-alpha.0
+TOOLS ?= v1.11.0-alpha.0-3-g1dfd14b
 PKGS_PREFIX ?= ghcr.io/siderolabs
-PKGS ?= v1.11.0-alpha.0-6-ga347857
+PKGS ?= v1.11.0-alpha.0-40-g03bb94c
 
 KRES_IMAGE ?= ghcr.io/siderolabs/kres:latest
 CONFORMANCE_IMAGE ?= ghcr.io/siderolabs/conform:latest
@@ -68,6 +68,7 @@ PKG_LVM2 ?= $(PKGS_PREFIX)/lvm2:$(PKGS)
 PKG_MTOOLS ?= $(PKGS_PREFIX)/mtools:$(PKGS)
 PKG_MUSL ?= $(PKGS_PREFIX)/musl:$(PKGS)
 PKG_OPENSSL ?= $(PKGS_PREFIX)/openssl:$(PKGS)
+PKG_OPEN_VMDK ?= $(PKGS_PREFIX)/open-vmdk:$(PKGS)
 PKG_PCRE2 ?= $(PKGS_PREFIX)/pcre2:$(PKGS)
 PKG_PIGZ ?= $(PKGS_PREFIX)/pigz:$(PKGS)
 PKG_QEMU_TOOLS ?= $(PKGS_PREFIX)/qemu-tools:$(PKGS)
@@ -86,17 +87,17 @@ PKG_ZSTD ?= $(PKGS_PREFIX)/zstd:$(PKGS)
 # renovate: datasource=github-tags depName=golang/go
 GO_VERSION ?= 1.24
 # renovate: datasource=go depName=golang.org/x/tools
-GOIMPORTS_VERSION ?= v0.32.0
+GOIMPORTS_VERSION ?= v0.33.0
 # renovate: datasource=go depName=mvdan.cc/gofumpt
 GOFUMPT_VERSION ?= v0.8.0
 # renovate: datasource=go depName=github.com/golangci/golangci-lint
-GOLANGCILINT_VERSION ?= v2.1.1
+GOLANGCILINT_VERSION ?= v2.1.6
 # renovate: datasource=go depName=golang.org/x/tools
-STRINGER_VERSION ?= v0.32.0
+STRINGER_VERSION ?= v0.33.0
 # renovate: datasource=go depName=github.com/dmarkham/enumer
 ENUMER_VERSION ?= v1.5.11
 # renovate: datasource=go depName=k8s.io/code-generator
-DEEPCOPY_GEN_VERSION ?= v0.32.3
+DEEPCOPY_GEN_VERSION ?= v0.33.1
 # renovate: datasource=go depName=github.com/planetscale/vtprotobuf
 VTPROTOBUF_VERSION ?= v0.6.0
 # renovate: datasource=go depName=github.com/siderolabs/deep-copy
@@ -108,9 +109,9 @@ PROTOTOOL_VERSION ?= v1.10.0
 # renovate: datasource=go depName=github.com/pseudomuto/protoc-gen-doc
 PROTOC_GEN_DOC_VERSION ?= v1.5.1
 # renovate: datasource=npm depName=markdownlint-cli
-MARKDOWNLINTCLI_VERSION ?= 0.44.0
+MARKDOWNLINTCLI_VERSION ?= 0.45.0
 # renovate: datasource=npm depName=textlint
-TEXTLINT_VERSION ?= 14.6.0
+TEXTLINT_VERSION ?= 14.7.2
 # renovate: datasource=npm depName=textlint-filter-rule-comments
 TEXTLINT_FILTER_RULE_COMMENTS_VERSION ?= 1.2.2
 # renovate: datasource=npm depName=textlint-rule-one-sentence-per-line
@@ -125,13 +126,13 @@ INTEGRATION_TEST := integration-test
 INTEGRATION_TEST_DEFAULT_TARGET := $(INTEGRATION_TEST)-$(OPERATING_SYSTEM)
 INTEGRATION_TEST_PROVISION_DEFAULT_TARGET := integration-test-provision-$(OPERATING_SYSTEM)
 # renovate: datasource=github-releases depName=kubernetes/kubernetes
-KUBECTL_VERSION ?= v1.33.0
+KUBECTL_VERSION ?= v1.33.1
 # renovate: datasource=github-releases depName=kastenhq/kubestr
-KUBESTR_VERSION ?= v0.4.48
+KUBESTR_VERSION ?= v0.4.49
 # renovate: datasource=github-releases depName=helm/helm
-HELM_VERSION ?= v3.17.3
+HELM_VERSION ?= v3.18.2
 # renovate: datasource=github-releases depName=cilium/cilium-cli
-CILIUM_CLI_VERSION ?= v0.18.3
+CILIUM_CLI_VERSION ?= v0.18.4
 # renovate: datasource=github-releases depName=microsoft/secureboot_objects
 MICROSOFT_SECUREBOOT_RELEASE ?= v1.1.3
 
@@ -153,6 +154,7 @@ GO_BUILDFLAGS ?=
 GO_BUILDTAGS ?= tcell_minimal,grpcnotrace
 GO_BUILDTAGS_TALOSCTL ?= grpcnotrace
 GO_LDFLAGS ?=
+GO_MACHINED_LDFLAGS ?= -X golang.zx2c4.com/wireguard/ipc.socketPath=/system/wireguard-sock # see https://github.com/siderolabs/talos/issues/8514
 GOAMD64 ?= v2
 
 WITH_RACE ?= false
@@ -183,7 +185,7 @@ GO_BUILDFLAGS += -tags "$(GO_BUILDTAGS)"
 , := ,
 space := $(subst ,, )
 BUILD := docker buildx build
-PLATFORM ?= linux/amd64
+PLATFORM ?= linux/$(ARCH)
 PROGRESS ?= auto
 PUSH ?= false
 COMMON_ARGS := --file=Dockerfile
@@ -202,6 +204,7 @@ COMMON_ARGS += --build-arg=ENUMER_VERSION=$(ENUMER_VERSION)
 COMMON_ARGS += --build-arg=GO_BUILDFLAGS_TALOSCTL="$(GO_BUILDFLAGS_TALOSCTL)"
 COMMON_ARGS += --build-arg=GO_BUILDFLAGS="$(GO_BUILDFLAGS)"
 COMMON_ARGS += --build-arg=GO_LDFLAGS="$(GO_LDFLAGS)"
+COMMON_ARGS += --build-arg=GO_MACHINED_LDFLAGS="$(GO_MACHINED_LDFLAGS)"
 COMMON_ARGS += --build-arg=GOAMD64="$(GOAMD64)"
 COMMON_ARGS += --build-arg=GOFUMPT_VERSION=$(GOFUMPT_VERSION)
 COMMON_ARGS += --build-arg=GOIMPORTS_VERSION=$(GOIMPORTS_VERSION)
@@ -249,6 +252,7 @@ COMMON_ARGS += --build-arg=PKG_LVM2=$(PKG_LVM2)
 COMMON_ARGS += --build-arg=PKG_MTOOLS=$(PKG_MTOOLS)
 COMMON_ARGS += --build-arg=PKG_MUSL=$(PKG_MUSL)
 COMMON_ARGS += --build-arg=PKG_OPENSSL=$(PKG_OPENSSL)
+COMMON_ARGS += --build-arg=PKG_OPEN_VMDK=$(PKG_OPEN_VMDK)
 COMMON_ARGS += --build-arg=PKG_PCRE2=$(PKG_PCRE2)
 COMMON_ARGS += --build-arg=PKG_PIGZ=$(PKG_PIGZ)
 COMMON_ARGS += --build-arg=PKG_QEMU_TOOLS=$(PKG_QEMU_TOOLS)
@@ -286,7 +290,7 @@ COMMON_ARGS += --build-arg=ZSTD_COMPRESSION_LEVEL=$(ZSTD_COMPRESSION_LEVEL)
 
 CI_ARGS ?=
 
-EXTENSIONS_FILTER_COMMAND ?= grep -vE 'tailscale|xen-guest-agent|nvidia|vmtoolsd-guest-agent|metal-agent|cloudflared|zerotier'
+EXTENSIONS_FILTER_COMMAND ?= grep -vE 'tailscale|xen-guest-agent|nvidia|vmtoolsd-guest-agent|metal-agent|cloudflared|zerotier|nebula'
 
 all: initramfs kernel installer imager talosctl talosctl-image talos
 
@@ -338,6 +342,9 @@ help: ## This help menu.
 
 # Build Abstractions
 
+$(ARTIFACTS):
+	@mkdir -p $(ARTIFACTS)
+
 .PHONY: base
 target-%: ## Builds the specified target defined in the Dockerfile. The build result will only remain in the build cache.
 	@$(BUILD) \
@@ -366,13 +373,13 @@ hack-test-%: ## Runs the specified script in ./hack/test with well known environ
 
 .PHONY: generate
 generate: ## Generates code from protobuf service definitions and machinery config.
-	@$(MAKE) local-$@ DEST=./ PLATFORM=$(OPERATING_SYSTEM)/$(ARCH) EMBED_TARGET=embed-abbrev
+	@$(MAKE) local-$@ DEST=./ PLATFORM=linux/$(ARCH) EMBED_TARGET=embed-abbrev
 
 .PHONY: docs
 docs: ## Generates the documentation for machine config, and talosctl.
 	@rm -rf docs/configuration/*
 	@rm -rf docs/talosctl/*
-	@$(MAKE) local-$@ DEST=./ PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) local-$@ DEST=./ PLATFORM=linux/amd64
 
 .PHONY: docs-preview
 docs-preview: ## Starts a local preview of the documentation using Hugo in docker
@@ -446,8 +453,10 @@ talosctl-windows-amd64:
 talosctl-windows-arm64:
 	@$(MAKE) local-talosctl-windows-arm64 DEST=$(ARTIFACTS) PUSH=false
 
-talosctl:
-	@$(MAKE) local-talosctl-targetarch DEST=$(ARTIFACTS)
+talosctl: talosctl-$(OPERATING_SYSTEM)-$(ARCH)
+
+sbom:
+	@$(MAKE) local-sbom DEST=$(ARTIFACTS)
 
 image-%: ## Builds the specified image. Valid options are aws, azure, digital-ocean, gcp, and vmware (e.g. image-aws)
 	@docker pull $(REGISTRY_AND_USERNAME)/imager:$(IMAGE_TAG_IN)
@@ -505,7 +514,6 @@ cloud-images: ## Uploads cloud images (AMIs, etc.) to the cloud registry.
 	@docker run --rm -v $(PWD):/src -w /src \
 		-e TAG=$(TAG) -e ARTIFACTS=$(ARTIFACTS) -e ABBREV_TAG=$(ABBREV_TAG) \
 		-e AWS_ACCESS_KEY_ID -e AWS_SECRET_ACCESS_KEY \
-		-e AZURE_SUBSCRIPTION_ID -e AZURE_CLIENT_ID -e AZURE_CLIENT_SECRET -e AZURE_TENANT_ID \
 		-e GOOGLE_PROJECT_ID -e GOOGLE_CREDENTIALS \
 		golang:$(GO_VERSION) \
 		./hack/cloud-image-uploader.sh $(CLOUD_IMAGES_EXTRA_ARGS)
@@ -527,19 +535,19 @@ cache-create: installer imager ## Generate image cache.
 # Code Quality
 
 api-descriptors: ## Generates API descriptors used to detect breaking API changes.
-	@$(MAKE) local-api-descriptors DEST=./ PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) local-api-descriptors DEST=./ PLATFORM=linux/$(ARCH)
 
 fmt-go: ## Formats the source code.
 	@docker run --rm -it -v $(PWD):/src -w /src -e GOTOOLCHAIN=local golang:$(GO_VERSION) bash -c "go install golang.org/x/tools/cmd/goimports@$(GOIMPORTS_VERSION) && goimports -w -local github.com/siderolabs/talos . && go install mvdan.cc/gofumpt@$(GOFUMPT_VERSION) && gofumpt -w ."
 
 fmt-protobuf: ## Formats protobuf files.
-	@$(MAKE) local-fmt-protobuf DEST=./ PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) local-fmt-protobuf DEST=./ PLATFORM=linux/$(ARCH)
 
 fmt: ## Formats the source code and protobuf files.
 	@$(MAKE) fmt-go fmt-protobuf
 
 lint-%: ## Runs the specified linter. Valid options are go, protobuf, and markdown (e.g. lint-go).
-	@$(MAKE) target-lint-$* PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) target-lint-$* PLATFORM=linux/$(ARCH)
 
 lint: ## Runs linters on go, vulncheck, protobuf, and markdown file types.
 	@$(MAKE) lint-go lint-vulncheck lint-protobuf lint-markdown
@@ -548,17 +556,17 @@ check-dirty: ## Verifies that source tree is not dirty
 	@if test -n "`git status --porcelain`"; then echo "Source tree is dirty"; git status; git diff; exit 1 ; fi
 
 go-mod-outdated: ## Runs the go-mod-oudated to show outdated dependencies.
-	@$(MAKE) target-go-mod-outdated PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) target-go-mod-outdated PLATFORM=linux/$(ARCH)
 
 # Tests
 
 .PHONY: unit-tests
 unit-tests: ## Performs unit tests.
-	@$(MAKE) local-$@ DEST=$(ARTIFACTS) TARGET_ARGS="--allow security.insecure" PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) local-$@ DEST=$(ARTIFACTS) TARGET_ARGS="--allow security.insecure" PLATFORM=linux/$(ARCH)
 
 .PHONY: unit-tests-race
 unit-tests-race: ## Performs unit tests with race detection enabled.
-	@$(MAKE) target-$@ TARGET_ARGS="--allow security.insecure" PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) target-$@ TARGET_ARGS="--allow security.insecure" PLATFORM=linux/$(ARCH)
 
 $(ARTIFACTS)/$(INTEGRATION_TEST_DEFAULT_TARGET)-amd64:
 	@$(MAKE) local-$(INTEGRATION_TEST_DEFAULT_TARGET)-amd64 DEST=$(ARTIFACTS) PLATFORM=linux/amd64 WITH_RACE=true PUSH=false
@@ -572,23 +580,19 @@ $(ARTIFACTS)/$(INTEGRATION_TEST):
 $(ARTIFACTS)/$(INTEGRATION_TEST_PROVISION_DEFAULT_TARGET)-amd64:
 	@$(MAKE) local-$(INTEGRATION_TEST_PROVISION_DEFAULT_TARGET) DEST=$(ARTIFACTS) PLATFORM=linux/amd64 WITH_RACE=true
 
-$(ARTIFACTS)/kubectl:
-	@mkdir -p $(ARTIFACTS)
+$(ARTIFACTS)/kubectl: $(ARTIFACTS)
 	@curl -L -o $(ARTIFACTS)/kubectl "$(KUBECTL_URL)"
 	@chmod +x $(ARTIFACTS)/kubectl
 
-$(ARTIFACTS)/kubestr:
-	@mkdir -p $(ARTIFACTS)
+$(ARTIFACTS)/kubestr: $(ARTIFACTS)
 	@curl -L "$(KUBESTR_URL)" | tar xzf - -C $(ARTIFACTS) kubestr
 	@chmod +x $(ARTIFACTS)/kubestr
 
-$(ARTIFACTS)/helm:
-	@mkdir -p $(ARTIFACTS)
+$(ARTIFACTS)/helm: $(ARTIFACTS)
 	@curl -L "$(HELM_URL)" | tar xzf - -C $(ARTIFACTS) --strip-components=1 linux-amd64/helm
 	@chmod +x $(ARTIFACTS)/helm
 
-$(ARTIFACTS)/cilium:
-	@mkdir -p $(ARTIFACTS)
+$(ARTIFACTS)/cilium: $(ARTIFACTS)
 	@curl -L "$(CILIUM_CLI_URL)" | tar xzf - -C $(ARTIFACTS) cilium
 	@chmod +x $(ARTIFACTS)/cilium
 
@@ -706,12 +710,13 @@ sign-images: ## Run cosign to sign all images built by this Makefile.
 	done
 
 .PHONY: reproducibility-test
-reproducibility-test:
+reproducibility-test: $(ARTIFACTS)
 	@$(MAKE) reproducibility-test-local-initramfs
-	@$(MAKE) reproducibility-test-docker-installer-base INSTALLER_ARCH=targetarch PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
-	@$(MAKE) reproducibility-test-docker-talos reproducibility-test-docker-imager reproducibility-test-docker-talosctl PLATFORM=$(OPERATING_SYSTEM)/$(ARCH)
+	@$(MAKE) reproducibility-test-docker-installer-base INSTALLER_ARCH=targetarch PLATFORM=linux/$(ARCH)
+	@$(MAKE) reproducibility-test-docker-talos reproducibility-test-docker-installer-base reproducibility-test-docker-imager reproducibility-test-docker-talosctl PLATFORM=linux/$(ARCH)
+	@$(MAKE) reproducibility-test-iso
 
-reproducibility-test-docker-%:
+reproducibility-test-docker-%: $(ARTIFACTS)
 	@rm -rf _out1/ _out2/
 	@mkdir -p _out1/ _out2/
 	@$(MAKE) docker-$* DEST=_out1/
@@ -719,13 +724,20 @@ reproducibility-test-docker-%:
 	@find _out1/ -type f | xargs -IFILE diffoscope FILE `echo FILE | sed 's/_out1/_out2/'`
 	@rm -rf _out1/ _out2/
 
-reproducibility-test-local-%:
+reproducibility-test-local-%: $(ARTIFACTS)
 	@rm -rf _out1/ _out2/
 	@mkdir -p _out1/ _out2/
 	@$(MAKE) local-$* DEST=_out1/
 	@$(MAKE) local-$* DEST=_out2/ TARGET_ARGS="--no-cache"
 	@find _out1/ -type f | xargs -IFILE diffoscope FILE `echo FILE | sed 's/_out1/_out2/'`
 	@rm -rf _out1/ _out2/
+
+reproducibility-test-iso: $(ARTIFACTS)
+	@$(MAKE) iso
+	mv $(ARTIFACTS)/metal-amd64.iso $(ARTIFACTS)/metal-amd64.iso.orig
+	@$(MAKE) iso
+	@diffoscope $(ARTIFACTS)/metal-amd64.iso.orig $(ARTIFACTS)/metal-amd64.iso
+	@rm -rf $(ARTIFACTS)/metal-amd64.iso.orig
 
 .PHONY: ci-temp-release-tag
 ci-temp-release-tag: ## Generates a temporary release tag for CI run.
